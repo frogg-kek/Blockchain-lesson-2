@@ -363,7 +363,7 @@ int main(int argc, char** argv) {
         else if (a == "--max-blocks") eatI(maxBlocks);
     }
 
-    cout << "=== Supaprastinta blokų grandinė v0.1 (OOP + tavo HashFunkcija) ===\n";
+    cout << "=== Supaprastinta blokų grandinė v0.1 ===\n";
     cout << "difficulty=" << difficulty
          << " users=" << users
          << " tx=" << txCount
