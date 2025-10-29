@@ -315,7 +315,7 @@ public:
     }
 
 private:
-    // duomenys
+    
     vector<Block> chain_;
     vector<Transaction> pending_;
     unordered_map<string, User> users_;
