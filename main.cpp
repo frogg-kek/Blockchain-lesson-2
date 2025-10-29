@@ -340,6 +340,41 @@ private:
         return s;
     }
 };
+int main(int argc, char** argv) {
+    unsigned difficulty = 3;   // kiek "0" hash pradžioje
+    unsigned users      = 1000;
+    unsigned txCount    = 10000;
+    unsigned txPerBlock = 100;
+    int      maxBlocks  = -1;  // -1: kasti iki kol neliks transakcijų
+
+    // paprasti flag'ai
+    for (int i = 1; i < argc; ++i) {
+        string a = argv[i];
+        auto eatU = [&](unsigned& v){ if (i+1 < argc) v = (unsigned)stoul(argv[++i]); };
+        auto eatI = [&](int& v){ if (i+1 < argc) v = stoi(argv[++i]); };
+        if (a == "--difficulty") eatU(difficulty);
+        else if (a == "--users") eatU(users);
+        else if (a == "--tx") eatU(txCount);
+        else if (a == "--tpb") eatU(txPerBlock);
+        else if (a == "--max-blocks") eatI(maxBlocks);
+    }
+
+    cout << "=== Supaprastinta blokų grandinė v0.1 (OOP + tavo HashFunkcija) ===\n";
+    cout << "difficulty=" << difficulty
+         << " users=" << users
+         << " tx=" << txCount
+         << " txPerBlock=" << txPerBlock
+         << " maxBlocks=" << maxBlocks << "\n\n";
+
+    Blockchain bc(difficulty, txPerBlock);
+    bc.generateUsers(users);
+    bc.generateTransactions(txCount);
+    bc.run(maxBlocks);
+
+    cout << "Viso gero!\n";
+    return 0;
+}
+
 
 
 
