@@ -105,15 +105,10 @@ class Transaction {
 public:
     Transaction() = default;
 
-    Transaction make(const string& sender, const string& receiver, long long amount, uint64_t timestamp) {
-        Transaction t;
-        t.sender_ = sender;
-        t.receiver_ = receiver;
-        t.amount_ = amount;
-        t.timestamp_ = timestamp;
-        string toHash = sender + "|" + receiver + "|" + to_string(amount) + "|" + to_string(timestamp);
-        t.id_ = HashFunkcija(toHash);
-        return t;
+    Transaction(const string& sender, const string& receiver, long long amount, uint64_t timestamp)
+        : sender_(sender), receiver_(receiver), amount_(amount), timestamp_(timestamp) {
+        string toHash = sender_ + "|" + receiver_ + "|" + to_string(amount_) + "|" + to_string(timestamp_);
+        id_ = HashFunkcija(toHash);
     }
 
     const string& id() const { return id_; }
@@ -229,7 +224,7 @@ public:
             do { receiver = keys[pick(rng_)]; } while (receiver == sender);
 
             long long amount = amt(rng_);
-            pending_.push_back(Transaction::make(sender, receiver, amount, nowSec()));
+            pending_.emplace_back(sender, receiver, amount, nowSec());
         }
         cout << "🧾 Sugeneruota laukiama transakcijų: " << pending_.size() << "\n";
     }
