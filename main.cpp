@@ -189,7 +189,7 @@ class Blockchain {
 public:
     Blockchain(unsigned difficulty = 3, unsigned txPerBlock = 100)
     : difficulty_(difficulty), txPerBlock_(txPerBlock), rng_(random_device{}()) {
-        
+
         // Genesis
         Block genesis;
         genesis.header().set_prev_hash(string(HASH_DYDIS * 2, '0')); // 64 nuliai, kai HASH_DYDIS=32
@@ -208,7 +208,7 @@ public:
             string pk   = randomPublicKey();
             users_.emplace(pk, User{name, pk, bal(rng_)});
         }
-        cout << "👥 Sugeneruota vartotojų: " << users_.size() << "\n";
+        cout << "Sugeneruota vartotojų: " << users_.size() << "\n";
     }
 
         void generateTransactions(size_t nTx) {
