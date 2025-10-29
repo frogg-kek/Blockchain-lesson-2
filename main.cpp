@@ -189,6 +189,7 @@ class Blockchain {
 public:
     Blockchain(unsigned difficulty = 3, unsigned txPerBlock = 100)
     : difficulty_(difficulty), txPerBlock_(txPerBlock), rng_(random_device{}()) {
+        
         // Genesis
         Block genesis;
         genesis.header().set_prev_hash(string(HASH_DYDIS * 2, '0')); // 64 nuliai, kai HASH_DYDIS=32
