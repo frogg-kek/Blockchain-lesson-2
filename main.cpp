@@ -264,7 +264,7 @@ public:
         }
         auto ms = chrono::duration_cast<chrono::milliseconds>(
                       chrono::high_resolution_clock::now() - start).count();
-        cout << "\n✅ Iškasta! nonce=" << block.header().nonce()
+        cout << "\n✅ ✅ ✅ Iškasta! nonce=" << block.header().nonce()
              << " hash=" << block.block_hash() << " (" << ms << " ms)\n";
     }
 
