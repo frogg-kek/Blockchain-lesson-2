@@ -320,7 +320,7 @@ private:
     vector<Transaction> pending_;
     unordered_map<string, User> users_;
 
-    // nustatymai
+    
     unsigned difficulty_;
     unsigned txPerBlock_;
     mt19937_64 rng_;
