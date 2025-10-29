@@ -349,7 +349,7 @@ int main(int argc, char** argv) {
     unsigned users      = 1000;
     unsigned txCount    = 10000;
     unsigned txPerBlock = 100;
-    int      maxBlocks  = -1;  // -1: kasti iki kol neliks transakcijų
+    int      maxBlocks  = -1;  
 
     // paprasti flag'ai
     for (int i = 1; i < argc; ++i) {
