@@ -351,7 +351,7 @@ int main(int argc, char** argv) {
     unsigned txPerBlock = 100;
     int      maxBlocks  = -1;  
 
-    // paprasti flag'ai
+
     for (int i = 1; i < argc; ++i) {
         string a = argv[i];
         auto eatU = [&](unsigned& v){ if (i+1 < argc) v = (unsigned)stoul(argv[++i]); };
