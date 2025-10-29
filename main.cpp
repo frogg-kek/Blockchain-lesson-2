@@ -252,7 +252,7 @@ public:
 
         while (true) {
             block.header().set_nonce(nonce++);
-            string h = HashFunkcija(block.header().to_string()); // TAVO hash
+            string h = HashFunkcija(block.header().to_string());
             if (starts_with_zeros(h, block.header().difficulty())) {
                 block.set_block_hash(h);
                 break;
