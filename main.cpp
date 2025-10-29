@@ -325,7 +325,7 @@ private:
     unsigned txPerBlock_;
     mt19937_64 rng_;
 
-    // pagalbiniai
+    
     string randomName() {
         static const char* syl[] = {"va","de","ra","li","no","ka","mi","to","sa","re","na","zo"};
         uniform_int_distribution<int> nSyl(2,3);
