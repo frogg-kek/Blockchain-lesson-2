@@ -138,12 +138,12 @@ public:
     void set_nonce(uint64_t v) { nonce_ = v; }
     void set_difficulty(unsigned v) { difficulty_ = v; }
 
-    const string& prev_hash() const { return prev_hash_; }
-    uint64_t timestamp() const { return timestamp_; }
-    const string& version() const { return version_; }
-    const string& transactions_hash() const { return transactions_hash_; }
-    uint64_t nonce() const { return nonce_; }
-    unsigned difficulty() const { return difficulty_; }
+    const string& getPrev_hash() const { return prev_hash_; }
+    uint64_t getTimestamp() const { return timestamp_; }
+    const string& getVersion() const { return version_; }
+    const string& getTransactions_hash() const { return transactions_hash_; }
+    uint64_t getNonce() const { return nonce_; }
+    unsigned getDifficulty() const { return difficulty_; }
 
     string to_string() const {
         return prev_hash_ + "|" + std::to_string(timestamp_) + "|" + version_ + "|" +
@@ -247,7 +247,7 @@ public:
 
         void mine(Block& block) {
         cout << " Kasam bloka: " << block.transactions().size()
-             << " tx... tikslas: " << block.header().difficulty() << " nuliai pradzioje\n";
+             << " tx... tikslas: " << block.header().getDifficulty() << " nuliai pradzioje\n";
 
         auto start = chrono::high_resolution_clock::now();
         uint64_t nonce = 0;
@@ -255,7 +255,7 @@ public:
         while (true) {
             block.header().set_nonce(nonce++);
             string h = HashFunkcija(block.header().to_string());
-            if (starts_with_zeros(h, block.header().difficulty())) {
+            if (starts_with_zeros(h, block.header().getDifficulty())) {
                 block.set_block_hash(h);
                 break;
             }
@@ -265,7 +265,7 @@ public:
         }
         auto ms = chrono::duration_cast<chrono::milliseconds>(
                       chrono::high_resolution_clock::now() - start).count();
-        cout << "\n Iskasta! nonce=" << block.header().nonce()
+        cout << "\n Iskasta! nonce=" << block.header().getNonce()
              << " hash=" << block.block_hash() << " (" << ms << " ms)\n";
     }
 
@@ -299,7 +299,7 @@ public:
         cout << "   Grandinės aukstis (be genesis): " << (chain_.size()-1) << "\n";
         cout << "   Liko laukiama transakciju: " << pending_.size() << "\n";
         cout << "   Bloko hash: " << block.block_hash() << "\n";
-        cout << "   Prev hash : " << block.header().prev_hash().substr(0,16) << "...\n";
+        cout << "   Prev hash : " << block.header().getPrev_hash().substr(0,16) << "...\n";
     }
         void run(int maxBlocks = -1) {
         int produced = 0;
