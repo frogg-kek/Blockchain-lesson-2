@@ -126,6 +126,54 @@ private:
     uint64_t timestamp_{0};
 };
 
+class UserManager {
+public:
+    void generateUsers(size_t nUsers) {
+        uniform_int_distribution<long long> bal(100, 1'000'000);
+        for (size_t i = 0; i < nUsers; ++i) {
+            string name = randomName();
+            string pk   = randomPublicKey();
+            users_.emplace(pk, User{name, pk, bal(rng_)});
+        }
+        cout << "Sugeneruota vartotojų: " << users_.size() << "\n";
+    }
+
+    bool withdraw(const string& pk, long long amt) {
+        auto it = users_.find(pk);
+        return it != users_.end() && it->second.withdraw(amt);
+    }
+    void deposit(const string& pk, long long amt) {
+        auto it = users_.find(pk);
+        if (it != users_.end()) it->second.deposit(amt);
+    }
+
+    vector<string> keys() const {
+        vector<string> out; out.reserve(users_.size());
+        for (auto& kv : users_) out.push_back(kv.first);
+        return out;
+    }
+
+    const unordered_map<string, User>& all() const { return users_; }
+
+private:
+    unordered_map<string, User> users_;
+    mt19937_64 rng_{random_device{}()};
+
+    string randomName() {
+        static const char* syl[] = {"va","de","ra","li","no","ka","mi","to","sa","re","na","zo"};
+        uniform_int_distribution<int> nSyl(2,3);
+        uniform_int_distribution<int> pick(0, (int)(sizeof(syl)/sizeof(syl[0]))-1);
+        string s; int k = nSyl(rng_); for (int i = 0; i < k; ++i) s += syl[pick(rng_)];
+        s[0] = (char)toupper(s[0]); return s;
+    }
+    string randomPublicKey() {
+        static const char* hex = "0123456789abcdef";
+        uniform_int_distribution<int> d(0, 15);
+        string s = "PUB"; for (int i = 0; i < 33; ++i) s += hex[d(rng_)]; return s;
+    }
+};
+
+
 // BLOKO ANTRAŠTĖS KLASĖ
 class BlockHeader {
 public:
