@@ -106,8 +106,7 @@ public:
 
     Transaction() = default;
 
-    Transaction(const string& sender, const string& receiver, long long amount, uint64_t timestamp)
-        : sender_(sender), receiver_(receiver), amount_(amount), timestamp_(timestamp) {
+    Transaction(const string& sender, const string& receiver, long long amount, uint64_t timestamp) : sender_(sender), receiver_(receiver), amount_(amount), timestamp_(timestamp) {
         string toHash = sender_  + receiver_  + to_string(amount_)  + to_string(timestamp_);
         id_ = HashFunkcija(toHash);
     }
@@ -205,8 +204,6 @@ static void generateTransactions(TxPool& pool, const vector<string>& keys, size_
     cout << " Sugeneruota laukiama transakciju: " << pool.size() << "\n";
 }
 
-
-
 // BLOKO ANTRAŠTĖS KLASĖ
 class BlockHeader {
 public:
@@ -276,7 +273,7 @@ public:
         Block b;
         b.header().set_prev_hash(prevHash);
         b.header().set_timestamp(nowSec());
-        b.header().set_version("v0.1");
+        b.header().set_version("v2025");
         b.header().set_difficulty(difficulty);
 
         auto picked = pool.take(txPerBlock);
@@ -312,6 +309,7 @@ public:
 private:
     unsigned difficulty_;
 };
+
 // BLOCKCHAIN KLASĖ
 class Blockchain {
 public:
