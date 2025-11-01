@@ -153,7 +153,7 @@ public:
 private:
     string prev_hash_;
     uint64_t timestamp_{0};
-    string version_{"v0.1"};
+    string version_{"v2025"};
     string transactions_hash_;
     uint64_t nonce_{0};
     unsigned difficulty_{3};
