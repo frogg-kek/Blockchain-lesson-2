@@ -295,17 +295,17 @@ public:
     // 3) Kiekviena pora lapų sujungiama (concatenate) ir maišoma -> sukuria tėvą
     // 4) Kartojame iki vieno root
     static string computeTransactionsHash(const vector<Transaction>& txs) {
-        // If no transactions, return hash of empty string (same behavior as before).
+        
         if (txs.empty()) return HashFunkcija("");
 
-        // Build leaves as transaction IDs (they are already hashes/ids)
+        
         vector<string> layer; layer.reserve(txs.size());
         for (const auto& t : txs) layer.push_back(t.getId());
 
-        // Iteratively compute parent layers until single root remains
+        
         while (layer.size() > 1) {
             if (layer.size() % 2 == 1) {
-                // duplicate last when odd number of nodes
+                
                 layer.push_back(layer.back());
             }
             vector<string> next; next.reserve(layer.size() / 2);
