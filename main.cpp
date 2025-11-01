@@ -173,6 +173,38 @@ private:
     }
 };
 
+class TxPool {
+public:
+    void push(Transaction tx) { pending_.push_back(std::move(tx)); }
+    vector<Transaction> take(size_t maxCount) {
+        size_t takeN = std::min(maxCount, pending_.size());
+        vector<Transaction> out; out.reserve(takeN);
+        // paimam paskutinius takeN (greičiau nei iš vidurio)
+        for (size_t i = 0; i < takeN; ++i) out.push_back(std::move(pending_[pending_.size()-1-i]));
+        pending_.resize(pending_.size() - takeN);
+        return out;
+    }
+    size_t size() const { return pending_.size(); }
+private:
+    vector<Transaction> pending_;
+};
+
+// Atskira funkcija transakcijoms generuoti (vietoj Blockchain::generateTransactions)
+static void generateTransactions(TxPool& pool, const vector<string>& keys, size_t nTx, mt19937_64& rng) {
+    if (keys.size() < 2) return;
+    uniform_int_distribution<long long> amt(1, 5000);
+    uniform_int_distribution<size_t> pick(0, keys.size()-1);
+
+    for (size_t i = 0; i < nTx; ++i) {
+        const string& sender = keys[pick(rng)];
+        string receiver;
+        do { receiver = keys[pick(rng)]; } while (receiver == sender);
+        long long amount = amt(rng);
+        pool.push(Transaction(sender, receiver, amount, nowSec()));
+    }
+    cout << " Sugeneruota laukiama transakciju: " << pool.size() << "\n";
+}
+
 
 // BLOKO ANTRAŠTĖS KLASĖ
 class BlockHeader {
