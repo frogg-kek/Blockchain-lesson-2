@@ -142,7 +142,7 @@ class UserManager {
 public:
     void generateUsers(size_t nUsers) {
         // Sukuriame atsitiktinius pradinius balansus.
-        uniform_int_distribution<long long> bal(0, 1'000'000);
+        uniform_int_distribution<long long> bal(100, 1000000);
         for (size_t i = 0; i < nUsers; ++i) {
             string name = randomName();
             string pk   = randomPublicKey();
@@ -191,17 +191,27 @@ private:
 class TxPool {
 public:
     void push(Transaction tx) { pending_.push_back(std::move(tx)); }
+
     vector<Transaction> take(size_t maxCount) {
         size_t takeN = std::min(maxCount, pending_.size());
         vector<Transaction> out; out.reserve(takeN);
-        // paimam paskutinius takeN (greičiau nei iš vidurio)
-        for (size_t i = 0; i < takeN; ++i) out.push_back(std::move(pending_[pending_.size()-1-i]));
-        pending_.resize(pending_.size() - takeN);
+        if (takeN == 0) return out;
+
+        for (size_t i = 0; i < takeN; ++i) {
+            uniform_int_distribution<size_t> dist(0, pending_.size() - 1);
+            size_t idx = dist(rng_);
+            out.push_back(std::move(pending_[idx]));
+            // pašaliname elementą
+            if (idx != pending_.size() - 1) pending_[idx] = std::move(pending_.back());
+            pending_.pop_back();
+        }
         return out;
     }
+
     size_t size() const { return pending_.size(); }
 private:
     vector<Transaction> pending_;
+    mt19937_64 rng_{random_device{}()};
 };
 
 // Funkcija, kuri sugeneruoja nTx atsitiktinių transakcijų ir įdeda jas į pool.
