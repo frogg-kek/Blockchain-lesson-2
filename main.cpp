@@ -84,9 +84,9 @@ public:
     User() = default;
     User(string name, string publicKey, long long balance) : name_(std::move(name)), publicKey_(std::move(publicKey)), balance_(balance) {}
 
-    const string& name() const { return name_; }
-    const string& public_key() const { return publicKey_; }
-    long long balance() const { return balance_; }
+    const string& getName() const { return name_; }
+    const string& getPublic_key() const { return publicKey_; }
+    long long getBalance() const { return balance_; }
 
     void deposit(long long amt) { balance_ += amt; }
     bool withdraw(long long amt) {
