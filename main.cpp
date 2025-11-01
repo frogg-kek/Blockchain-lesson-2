@@ -375,7 +375,8 @@ public:
 
           // Apply balances: withdraw returns false if sender missing or insufficient
           bool ok = users.withdraw(tx.getSender(), tx.getAmount());
-          if (ok) users.deposit(tx.getReceiver(), tx.getAmount());
+          if (ok) 
+          users.deposit(tx.getReceiver(), tx.getAmount());
           cout << "   TX " << tx.getId().substr(0,10) << "... "
               << tx.getSender().substr(0,8) << " -> " << tx.getReceiver().substr(0,8)
               << " amt=" << tx.getAmount() << (ok ? " [APPLIED]" : " [SKIPPED: insufficient balance or unknown]") << "\n";
@@ -383,7 +384,7 @@ public:
 
         chain_.push_back(block);
 
-        cout << "   Grandinės aukstis (be genesis): " << (chain_.size()-1) << "\n";
+        cout << "   Grandines aukstis (be genesis): " << (chain_.size()-1) << "\n";
         cout << "   Bloko hash: " << block.block_hash() << "\n";
         cout << "   Prev hash : " << block.header().getPrev_hash().substr(0,16) << "...\n";
     }
