@@ -227,7 +227,7 @@ public:
             long long amount = amt(rng_);
             pending_.emplace_back(sender, receiver, amount, nowSec());
         }
-        cout << "🧾 Sugeneruota laukiama transakcijų: " << pending_.size() << "\n";
+        cout << " Sugeneruota laukiama transakciju: " << pending_.size() << "\n";
     }
 
         Block formCandidateBlock() {
@@ -245,8 +245,8 @@ public:
     }
 
         void mine(Block& block) {
-        cout << "⛏️  Kasam bloką: " << block.transactions().size()
-             << " tx... tikslas: " << block.header().difficulty() << " nuliai pradžioje\n";
+        cout << " Kasam bloka: " << block.transactions().size()
+             << " tx... tikslas: " << block.header().difficulty() << " nuliai pradzioje\n";
 
         auto start = chrono::high_resolution_clock::now();
         uint64_t nonce = 0;
@@ -264,12 +264,12 @@ public:
         }
         auto ms = chrono::duration_cast<chrono::milliseconds>(
                       chrono::high_resolution_clock::now() - start).count();
-        cout << "\n✅ ✅ ✅ Iškasta! nonce=" << block.header().nonce()
+        cout << "\n Iskasta! nonce=" << block.header().nonce()
              << " hash=" << block.block_hash() << " (" << ms << " ms)\n";
     }
 
         void addBlock(const Block& block) {
-        cout << "🔗 Pridedame bloką #" << chain_.size()
+        cout << " Pridedame bloka #" << chain_.size()
              << "  tx=" << block.transactions().size() << "\n";
 
         for (const auto& tx : block.transactions()) {
@@ -295,8 +295,8 @@ public:
 
         chain_.push_back(block);
 
-        cout << "   Grandinės aukštis (be genesis): " << (chain_.size()-1) << "\n";
-        cout << "   Liko laukiama transakcijų: " << pending_.size() << "\n";
+        cout << "   Grandinės aukstis (be genesis): " << (chain_.size()-1) << "\n";
+        cout << "   Liko laukiama transakciju: " << pending_.size() << "\n";
         cout << "   Bloko hash: " << block.block_hash() << "\n";
         cout << "   Prev hash : " << block.header().prev_hash().substr(0,16) << "...\n";
     }
@@ -311,8 +311,8 @@ public:
             ++produced;
             cout << "------------------------------------------------------------\n";
         }
-        cout << "🏁 Baigta. Iškasta blokų: " << produced
-             << " | grandinės aukštis (be genesis): " << (chain_.size()-1) << "\n";
+        cout << " Baigta. Iskasta bloku: " << produced
+             << " | grandines aukstis (be genesis): " << (chain_.size()-1) << "\n";
     }
 
 private:
@@ -364,7 +364,7 @@ int main(int argc, char** argv) {
         else if (a == "--max-blocks") eatI(maxBlocks);
     }
 
-    cout << "=== Supaprastinta blokų grandinė v0.1 ===\n";
+    cout << "=== Supaprastinta bloku grandine v0.1 ===\n";
     cout << "difficulty=" << difficulty
          << " users=" << users
          << " tx=" << txCount
