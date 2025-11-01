@@ -283,7 +283,7 @@ private:
     string block_hash_;
 };
 
-// MINER KLASĖ (dabar po Block, kad Block būtų pilnas tipas)
+// MINER KLASĖ
 class Miner {
 public:
     explicit Miner(unsigned difficulty) : difficulty_(difficulty) {}
@@ -365,11 +365,20 @@ public:
         }
 
         for (const auto& tx : block.transactions()) {
-            bool ok = users.withdraw(tx.getSender(), tx.getAmount());
-            if (ok) users.deposit(tx.getReceiver(), tx.getAmount());
-            cout << "   TX " << tx.getId().substr(0,10) << "... "
-                 << tx.getSender().substr(0,8) << " -> " << tx.getReceiver().substr(0,8)
-                 << " amt=" << tx.getAmount() << (ok ? " [APPLIED]" : " [SKIPPED]") << "\n";
+          // Verify transaction ID (recompute) to detect tampering
+          string expectedId = HashFunkcija(tx.getSender() + tx.getReceiver() + to_string(tx.getAmount()) + to_string(tx.getTimestamp()));
+          if (expectedId != tx.getId()) {
+             cout << "   TX " << tx.getId().substr(0,10) << "... "
+                 << "INVALID ID - skipped\n";
+             continue;
+          }
+
+          // Apply balances: withdraw returns false if sender missing or insufficient
+          bool ok = users.withdraw(tx.getSender(), tx.getAmount());
+          if (ok) users.deposit(tx.getReceiver(), tx.getAmount());
+          cout << "   TX " << tx.getId().substr(0,10) << "... "
+              << tx.getSender().substr(0,8) << " -> " << tx.getReceiver().substr(0,8)
+              << " amt=" << tx.getAmount() << (ok ? " [APPLIED]" : " [SKIPPED: insufficient balance or unknown]") << "\n";
         }
 
         chain_.push_back(block);
