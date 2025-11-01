@@ -16,7 +16,18 @@ using namespace std;
 #define HASH_DYDIS 32
 #endif
 
+// Trumpas failo aprašymas (pradedantiesiems):
+// Ši programa demonstruoja supaprastintą blokų grandinę.
+// - `HashFunkcija` yra demonstracinė maišos funkcija (NE kriptografiškai saugi)
+// - `User`, `Transaction`, `UserManager` ir `TxPool` yra paprasti modeliai
+// - `Block`/`BlockHeader` atvaizduoja blokus ir jų antraštes
+// - `Miner` bando surasti nonce, kad blokas atitiktų difficulty (maišo pradžioje turi būti '0')
+// Kodo tikslas: mokytis, ne gamybinė implementacija.
+
 // HASH FUNKCIJA
+// Paprasta demonstracinė "maišos" funkcija.
+// Pastaba pradedantiesiems: tikros maišos funkcijos (pvz., SHA-256) yra sudėtingesnės ir
+// kriptografiškai saugios. Čia naudojama deterministinė, reproducibile funkcija mokymuisi.
 std::string HashFunkcija(std::string tekstas){
     unsigned char hash[HASH_DYDIS] = {0};
 
@@ -66,6 +77,8 @@ std::string HashFunkcija(std::string tekstas){
 }
 
 // PAGALBINES FUNKCIJOS REIKALINGOS 0 PATIKRINIMUI
+// Patikrina, ar heksadinio hašo pradžia turi reikiamą kiekį '0' simbolių.
+// Tai supaprastintas būdas pavaizduoti sunkumą (difficulty).
 static inline bool starts_with_zeros(const string& hexHash, unsigned zeros) {
     if (hexHash.size() < zeros) return false;
     for (unsigned i = 0; i < zeros; ++i) if (hexHash[i] != '0') return false;
@@ -77,10 +90,14 @@ static inline uint64_t nowSec() {
     return duration_cast<seconds>(system_clock::now().time_since_epoch()).count();
 }
 
+// nowSec() grąžina dabartinį laiką sekundėmis nuo UNIX epoch (naudojama timestampams).
+
 // VARTOTOJO KLASĖ
 class User {
 public:
 
+    // Paprasta klasė, sauganti naudotojo vardą, viešą raktą ir balansą.
+    // Metodai deposit/withdraw keičia balansą; withdraw grąžina false, jei nėra pakankamai lėšų.
     User() = default;
     User(string name, string publicKey, long long balance) : name_(std::move(name)), publicKey_(std::move(publicKey)), balance_(balance) {}
 
@@ -104,6 +121,9 @@ private:
 class Transaction {
 public:
 
+    // Transaction laiko siuntėją, gavėją, sumą ir timestamp'ą.
+    // Konstruktorius taip pat sukurs ID = HashFunkcija(sender+receiver+amount+timestamp)
+    // - ID naudojamas unikaliai identifikuoti transakciją ir vėlesnei patikrai
     Transaction() = default;
 
     Transaction(const string& sender, const string& receiver, long long amount, uint64_t timestamp) : sender_(sender), receiver_(receiver), amount_(amount), timestamp_(timestamp) {
@@ -128,7 +148,10 @@ private:
 class UserManager {
 public:
     void generateUsers(size_t nUsers) {
-        uniform_int_distribution<long long> bal(100, 1'000'000);
+        // Sukuriame atsitiktinius pradinius balansus.
+        // Jei norite kontroliuoti intervalą, čia galite pakeisti 0 ir 1'000'000.
+        // Pvz., uniform_int_distribution<long long> bal(100, 1'000'000);
+        uniform_int_distribution<long long> bal(0, 1'000'000);
         for (size_t i = 0; i < nUsers; ++i) {
             string name = randomName();
             string pk   = randomPublicKey();
@@ -172,6 +195,8 @@ private:
     }
 };
 
+// UserManager: paprastas vartotojų tvarkymas. Naudokite generateUsers() prieš generuojant transakcijas.
+
 class TxPool {
 public:
     void push(Transaction tx) { pending_.push_back(std::move(tx)); }
@@ -188,7 +213,11 @@ private:
     vector<Transaction> pending_;
 };
 
-// Atskira funkcija transakcijoms generuoti (vietoj Blockchain::generateTransactions)
+// Funkcija, kuri sugeneruoja nTx atsitiktinių transakcijų ir įdeda jas į pool.
+// Paaiškinimas pradedantiesiems:
+// - `keys` yra vartotojų vieši raktai (iš UserManager::keys())
+// - Imame atsitiktinį siuntėją ir gavėją (skirtingus) ir sumą iš intervalo
+// - Kiekviena transakcija gauna timestamp'ą dabar ir unikalų ID per HashFunkcija
 static void generateTransactions(TxPool& pool, const vector<string>& keys, size_t nTx, mt19937_64& rng) {
     if (keys.size() < 2) return;
     uniform_int_distribution<long long> amt(1, 5000);
@@ -208,6 +237,14 @@ static void generateTransactions(TxPool& pool, const vector<string>& keys, size_
 class BlockHeader {
 public:
     BlockHeader() = default;
+
+    // BlockHeader saugo informaciją, kuri apibūdina bloką bet ne pati transakcijas.
+    // Pagrindiniai laukai:
+    // - prev_hash: nuoroda į ankstesnio bloko hashą
+    // - timestamp: kada blokas buvo sukurtas
+    // - transactions_hash: Merkle root arba kažkokia transakcijų santrauka
+    // - nonce: skaičius, kurį kinta kasėjai bandydami surasti galiojantį hash
+    // - difficulty: kiek '0' reikia hašo pradžioje (supaprastintas sunkumas)
 
     void set_prev_hash(string v) { prev_hash_ = std::move(v); }
     void set_timestamp(uint64_t v) { timestamp_ = v; }
@@ -251,6 +288,12 @@ public:
     const string& block_hash() const { return block_hash_; }
     void set_block_hash(string h) { block_hash_ = std::move(h); }
 
+    // computeTransactionsHash apskaičiuoja Merkle root iš transakcijų ID.
+    // Trumpai:
+    // 1) Kiekviena transakcija yra lapas (naudojame tx.getId())
+    // 2) Jei sluoksnyje yra nelyginis skaičius lapų, paskutinį dubliuojame
+    // 3) Kiekviena pora lapų sujungiama (concatenate) ir maišoma -> sukuria tėvą
+    // 4) Kartojame iki vieno root
     static string computeTransactionsHash(const vector<Transaction>& txs) {
         // If no transactions, return hash of empty string (same behavior as before).
         if (txs.empty()) return HashFunkcija("");
@@ -288,6 +331,11 @@ class Miner {
 public:
     explicit Miner(unsigned difficulty) : difficulty_(difficulty) {}
 
+    // Miner klasė atvaizduoja vieno kasėjo elgesį:
+    // - makeCandidate: sukuria bloko kandidatą (prideda transakcijas, nustato prev_hash ir difficulty)
+    // - tryMine: bando rasti nonce su laiko arba bandymų apribojimu
+    // - mine: bloko kasimas be limitų
+
     Block makeCandidate(const string& prevHash, unsigned difficulty, size_t txPerBlock, TxPool& pool) {
         Block b;
         b.header().set_prev_hash(prevHash);
@@ -300,6 +348,32 @@ public:
 
         b.header().set_transactions_hash(Block::computeTransactionsHash(b.transactions()));
         return b;
+    }
+
+    
+    bool tryMine(Block& block, uint64_t timeLimitMs, uint64_t maxAttempts) {
+        auto start = chrono::high_resolution_clock::now();
+        uint64_t attempts = 0;
+        uint64_t nonce = block.header().getNonce();
+
+        while (true) {
+            if (maxAttempts != 0 && attempts >= maxAttempts) return false;
+            if (timeLimitMs != 0) {
+                auto elapsed = chrono::duration_cast<chrono::milliseconds>(chrono::high_resolution_clock::now() - start).count();
+                if ((uint64_t)elapsed >= timeLimitMs) return false;
+            }
+
+            block.header().set_nonce(nonce++);
+            string h = HashFunkcija(block.header().to_string());
+            ++attempts;
+            if (starts_with_zeros(h, block.header().getDifficulty())) {
+                block.set_block_hash(h);
+                return true;
+            }
+            if (attempts % 100000 == 0) {
+                cout << "   ... bandyta nonce " << nonce << "\r" << flush;
+            }
+        }
     }
 
     void mine(Block& block) {
@@ -350,6 +424,12 @@ public:
 
     // Dabar addBlock priima UserManager, nes jis taiko balansus
     void addBlock(const Block& block, UserManager& users) {
+        // addBlock daro kelis dalykus:
+        // 1) Patikrina, ar bloko prev_hash sutampa su grandinės tipu
+        // 2) Patikrina, ar bloko hash atitinka difficulty
+        // 3) Patikrina, ar transactions_hash sutampa su transakcijų Merkle root
+        // 4) Taiko kiekvieną transakciją į vartotojų balansus (withdraw/deposit)
+        // Jei transakcija neteisinga (pvz., ID neteisingas arba siuntėjas neturi lėšų), ji praleidžiama.
         cout << " Pridedame bloka #" << chain_.size()
              << "  tx=" << block.transactions().size() << "\n";
 
@@ -412,6 +492,7 @@ int main(int argc, char** argv) {
         else if (a == "--max-blocks") eatI(maxBlocks);
     }
 
+    // PAGRINDINIS: nustatymai ir moduliai
     cout << "=== Supaprastinta bloku grandine v0.1 ===\n";
     cout << "difficulty=" << difficulty
          << " users=" << users
@@ -419,7 +500,11 @@ int main(int argc, char** argv) {
          << " txPerBlock=" << txPerBlock
          << " maxBlocks=" << maxBlocks << "\n\n";
 
-    // Moduliai
+    // Moduliai:
+    // - UserManager: generuoja vartotojus ir jų balansus
+    // - TxPool: laukiančių transakcijų saugykla
+    // - Blockchain: pati grandinė su genesis bloku
+    // - Miner: objektas, kuris bando "kasti" blokus
     UserManager um;
     um.generateUsers(users);
 
@@ -432,14 +517,69 @@ int main(int argc, char** argv) {
 
     // Mining ciklas
     int produced = 0;
+    const size_t nCandidates = 5; // kiek kandidatų sugeneruoti kiekvienam raundui
+
     while (pool.size() > 0) {
         if (maxBlocks > 0 && produced >= maxBlocks) break;
-        Block b = miner.makeCandidate(bc.tip().block_hash(), difficulty, txPerBlock, pool);
-        if (b.transactions().empty()) break;
-        miner.mine(b);
-        bc.addBlock(b, um);
-        ++produced;
-        cout << "------------------------------------------------------------\n";
+
+        // Sugeneruojame iki nCandidates kandidatų
+        vector<Block> candidates;
+        for (size_t i = 0; i < nCandidates; ++i) {
+            if (pool.size() == 0) break;
+            Block c = miner.makeCandidate(bc.tip().block_hash(), difficulty, txPerBlock, pool);
+            if (c.transactions().empty()) break;
+            candidates.push_back(std::move(c));
+        }
+        if (candidates.empty()) break;
+
+        // Pradiniai limitai (pvz., 5s ir tam tikras bandymų skaičius)
+        uint64_t timeLimitMs = 5000; // 5 seconds
+        uint64_t maxAttempts = 5000; // pradinis bandymų limitas
+        bool mined = false;
+        size_t minedIndex = SIZE_MAX;
+
+        // Kartoti tol, kol kas nors iš kandidatų iškasamas; jei ne - didiname limitus
+        int round = 0;
+        const int maxRounds = 6; // saugiklis
+        while (!mined && round < maxRounds) {
+            cout << "Pradedame kasimo raunda " << round+1 << ": timeLimit=" << timeLimitMs << " ms, attempts=" << maxAttempts << "\n";
+            // Actual attempts: try each candidate sequentially with limits
+            for (size_t i = 0; i < candidates.size(); ++i) {
+                cout << "  Bandome kandidatą #" << i << " (tx=" << candidates[i].transactions().size() << ")\n";
+                if (miner.tryMine(candidates[i], timeLimitMs, maxAttempts)) {
+                    mined = true; minedIndex = i; break;
+                }
+                // neperkopsime - tęsiame su kitais kandidatais
+            }
+
+            if (!mined) {
+                // jei niekas neiškasta, padidinti limitus ir kartoti
+                timeLimitMs *= 2;
+                maxAttempts *= 2;
+                ++round;
+                cout << "  Niekas neiškasta šiame raunde, didiname limitus ir kartojame\n";
+            }
+        }
+
+        if (mined) {
+            // Atkuriame neigytų kandidatų transakcijas atgal į pool
+            for (size_t i = 0; i < candidates.size(); ++i) {
+                if (i == minedIndex) continue;
+                for (auto& tx : candidates[i].transactions()) pool.push(std::move(tx));
+            }
+
+            // Pridedame iškastą bloką
+            Block minedBlock = std::move(candidates[minedIndex]);
+            bc.addBlock(minedBlock, um);
+            ++produced;
+            cout << "------------------------------------------------------------\n";
+        } else {
+            // Jei nepavyko po maxRounds, grąžiname visų kandidatų tx į pool ir tęsiame (arba išeiname)
+            cout << "Nesėkmingi bandymai po " << maxRounds << " raundų. Grąžiname transakcijas į pool.\n";
+            for (auto& c : candidates) for (auto& tx : c.transactions()) pool.push(std::move(tx));
+            // Galim eiti toliau arba išeiti - čia išeiname (jei norite kitaip, galite pakeisti)
+            break;
+        }
     }
 
     cout << " Baigta. Iskasta bloku: " << produced
