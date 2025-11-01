@@ -205,50 +205,6 @@ static void generateTransactions(TxPool& pool, const vector<string>& keys, size_
     cout << " Sugeneruota laukiama transakciju: " << pool.size() << "\n";
 }
 
-class Miner {
-public:
-    explicit Miner(unsigned difficulty) : difficulty_(difficulty) {}
-
-    Block makeCandidate(const string& prevHash, unsigned difficulty, size_t txPerBlock, TxPool& pool) {
-        Block b;
-        b.header().set_prev_hash(prevHash);
-        b.header().set_timestamp(nowSec());
-        b.header().set_version("v0.1");
-        b.header().set_difficulty(difficulty);
-
-        auto picked = pool.take(txPerBlock);
-        b.transactions() = std::move(picked);
-
-        b.header().set_transactions_hash(Block::computeTransactionsHash(b.transactions()));
-        return b;
-    }
-
-    void mine(Block& block) {
-        cout << " Kasam bloka: " << block.transactions().size()
-             << " tx... tikslas: " << block.header().getDifficulty() << " nuliai pradzioje\n";
-
-        auto start = chrono::high_resolution_clock::now();
-        uint64_t nonce = 0;
-        while (true) {
-            block.header().set_nonce(nonce++);
-            string h = HashFunkcija(block.header().to_string());
-            if (starts_with_zeros(h, block.header().getDifficulty())) {
-                block.set_block_hash(h);
-                break;
-            }
-            if (nonce % 100000 == 0) {
-                cout << "   ... bandyta nonce " << nonce << "\r" << flush;
-            }
-        }
-        auto ms = chrono::duration_cast<chrono::milliseconds>(
-                      chrono::high_resolution_clock::now() - start).count();
-        cout << "\n Iskasta! nonce=" << block.header().getNonce()
-             << " hash=" << block.block_hash() << " (" << ms << " ms)\n";
-    }
-
-private:
-    unsigned difficulty_;
-};
 
 
 // BLOKO ANTRAŠTĖS KLASĖ
@@ -304,12 +260,58 @@ public:
         return HashFunkcija(concat);
     }
 
+
 private:
     BlockHeader header_;
     vector<Transaction> transactions_;
     string block_hash_;
 };
 
+// MINER KLASĖ (dabar po Block, kad Block būtų pilnas tipas)
+class Miner {
+public:
+    explicit Miner(unsigned difficulty) : difficulty_(difficulty) {}
+
+    Block makeCandidate(const string& prevHash, unsigned difficulty, size_t txPerBlock, TxPool& pool) {
+        Block b;
+        b.header().set_prev_hash(prevHash);
+        b.header().set_timestamp(nowSec());
+        b.header().set_version("v0.1");
+        b.header().set_difficulty(difficulty);
+
+        auto picked = pool.take(txPerBlock);
+        b.transactions() = std::move(picked);
+
+        b.header().set_transactions_hash(Block::computeTransactionsHash(b.transactions()));
+        return b;
+    }
+
+    void mine(Block& block) {
+        cout << " Kasam bloka: " << block.transactions().size()
+             << " tx... tikslas: " << block.header().getDifficulty() << " nuliai pradzioje\n";
+
+        auto start = chrono::high_resolution_clock::now();
+        uint64_t nonce = 0;
+        while (true) {
+            block.header().set_nonce(nonce++);
+            string h = HashFunkcija(block.header().to_string());
+            if (starts_with_zeros(h, block.header().getDifficulty())) {
+                block.set_block_hash(h);
+                break;
+            }
+            if (nonce % 100000 == 0) {
+                cout << "   ... bandyta nonce " << nonce << "\r" << flush;
+            }
+        }
+        auto ms = chrono::duration_cast<chrono::milliseconds>(
+                      chrono::high_resolution_clock::now() - start).count();
+        cout << "\n Iskasta! nonce=" << block.header().getNonce()
+             << " hash=" << block.block_hash() << " (" << ms << " ms)\n";
+    }
+
+private:
+    unsigned difficulty_;
+};
 // BLOCKCHAIN KLASĖ
 class Blockchain {
 public:
