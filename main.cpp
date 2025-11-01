@@ -103,6 +103,7 @@ private:
 // TRANSAKCIJOS KLASĖ
 class Transaction {
 public:
+
     Transaction() = default;
 
     Transaction(const string& sender, const string& receiver, long long amount, uint64_t timestamp)
@@ -111,11 +112,11 @@ public:
         id_ = HashFunkcija(toHash);
     }
 
-    const string& id() const { return id_; }
-    const string& sender() const { return sender_; }
-    const string& receiver() const { return receiver_; }
-    long long amount() const { return amount_; }
-    uint64_t timestamp() const { return timestamp_; }
+    const string& getId() const { return id_; }
+    const string& getSender() const { return sender_; }
+    const string& getReceiver() const { return receiver_; }
+    long long getAmount() const { return amount_; }
+    uint64_t getTimestamp() const { return timestamp_; }
 
 private:
     string id_;
@@ -174,7 +175,7 @@ public:
 
     static string computeTransactionsHash(const vector<Transaction>& txs) {
         string concat; concat.reserve(txs.size() * 8);
-        for (auto& t : txs) concat += t.id();
+        for (auto& t : txs) concat += t.getId();
         return HashFunkcija(concat);
     }
 
@@ -273,24 +274,24 @@ public:
              << "  tx=" << block.transactions().size() << "\n";
 
         for (const auto& tx : block.transactions()) {
-            auto sIt = users_.find(tx.sender());
-            auto rIt = users_.find(tx.receiver());
+            auto sIt = users_.find(tx.getSender());
+            auto rIt = users_.find(tx.getReceiver());
             bool ok = false;
             if (sIt != users_.end() && rIt != users_.end()) {
-                if (sIt->second.withdraw(tx.amount())) {
-                    rIt->second.deposit(tx.amount());
+                if (sIt->second.withdraw(tx.getAmount())) {
+                    rIt->second.deposit(tx.getAmount());
                     ok = true;
                 }
             }
-            cout << "   TX " << tx.id().substr(0,10) << "... "
-                 << tx.sender().substr(0,8) << " -> " << tx.receiver().substr(0,8)
-                 << " amt=" << tx.amount() << (ok ? " [APPLIED]" : " [SKIPPED]") << "\n";
+            cout << "   TX " << tx.getId().substr(0,10) << "... "
+                 << tx.getSender().substr(0,8) << " -> " << tx.getReceiver().substr(0,8)
+                 << " amt=" << tx.getAmount() << (ok ? " [APPLIED]" : " [SKIPPED]") << "\n";
         }
 
         vector<string> ids; ids.reserve(block.transactions().size());
-        for (auto& t : block.transactions()) ids.push_back(t.id());
+        for (auto& t : block.transactions()) ids.push_back(t.getId());
         pending_.erase(remove_if(pending_.begin(), pending_.end(),
-            [&](const Transaction& t){ return find(ids.begin(), ids.end(), t.id()) != ids.end(); }),
+            [&](const Transaction& t){ return find(ids.begin(), ids.end(), t.getId()) != ids.end(); }),
             pending_.end());
 
         chain_.push_back(block);
