@@ -108,7 +108,7 @@ public:
 
     Transaction(const string& sender, const string& receiver, long long amount, uint64_t timestamp)
         : sender_(sender), receiver_(receiver), amount_(amount), timestamp_(timestamp) {
-        string toHash = sender_ + "|" + receiver_ + "|" + to_string(amount_) + "|" + to_string(timestamp_);
+        string toHash = sender_  + receiver_  + to_string(amount_)  + to_string(timestamp_);
         id_ = HashFunkcija(toHash);
     }
 
