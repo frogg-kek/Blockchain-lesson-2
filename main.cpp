@@ -313,12 +313,11 @@ private:
 // BLOCKCHAIN KLASĖ
 class Blockchain {
 public:
-    Blockchain(unsigned difficulty = 3, unsigned txPerBlock = 100)
-    : difficulty_(difficulty), txPerBlock_(txPerBlock), rng_(random_device{}()) {
-
+    explicit Blockchain(unsigned difficulty, unsigned /*txPerBlock*/ = 100)
+    : difficulty_(difficulty) {
         // Genesis
         Block genesis;
-        genesis.header().set_prev_hash(string(HASH_DYDIS * 2, '0')); // 64 nuliai, kai HASH_DYDIS=32
+        genesis.header().set_prev_hash(string(HASH_DYDIS * 2, '0'));
         genesis.header().set_timestamp(nowSec());
         genesis.header().set_version("v0.1");
         genesis.header().set_difficulty(difficulty_);
@@ -327,157 +326,51 @@ public:
         chain_.push_back(std::move(genesis));
     }
 
-    void generateUsers(size_t nUsers) {
-        uniform_int_distribution<long long> bal(100, 1'000'000);
-        for (size_t i = 0; i < nUsers; ++i) {
-            string name = randomName();
-            string pk   = randomPublicKey();
-            users_.emplace(pk, User{name, pk, bal(rng_)});
-        }
-        cout << "Sugeneruota vartotojų: " << users_.size() << "\n";
-    }
+    const Block& tip() const { return chain_.back(); }
+    size_t height() const { return chain_.size() - 1; } // be genesis
 
-        void generateTransactions(size_t nTx) {
-        if (users_.size() < 2) return;
-        uniform_int_distribution<long long> amt(1, 5000);
-
-        vector<string> keys; keys.reserve(users_.size());
-        for (auto& kv : users_) keys.push_back(kv.first);
-        uniform_int_distribution<size_t> pick(0, keys.size()-1);
-
-        for (size_t i = 0; i < nTx; ++i) {
-            const string& sender = keys[pick(rng_)];
-            string receiver;
-            do { receiver = keys[pick(rng_)]; } while (receiver == sender);
-
-            long long amount = amt(rng_);
-            pending_.emplace_back(sender, receiver, amount, nowSec());
-        }
-        cout << " Sugeneruota laukiama transakciju: " << pending_.size() << "\n";
-    }
-
-        Block formCandidateBlock() {
-        Block b;
-        b.header().set_prev_hash(chain_.back().block_hash());
-        b.header().set_timestamp(nowSec());
-        b.header().set_version("v0.1");
-        b.header().set_difficulty(difficulty_);
-
-        size_t take = std::min<size_t>(txPerBlock_, pending_.size());
-        std::sample(pending_.begin(), pending_.end(), back_inserter(b.transactions()), take, rng_);
-
-        b.header().set_transactions_hash(Block::computeTransactionsHash(b.transactions()));
-        return b;
-    }
-
-        void mine(Block& block) {
-        cout << " Kasam bloka: " << block.transactions().size()
-             << " tx... tikslas: " << block.header().getDifficulty() << " nuliai pradzioje\n";
-
-        auto start = chrono::high_resolution_clock::now();
-        uint64_t nonce = 0;
-
-        while (true) {
-            block.header().set_nonce(nonce++);
-            string h = HashFunkcija(block.header().to_string());
-            if (starts_with_zeros(h, block.header().getDifficulty())) {
-                block.set_block_hash(h);
-                break;
-            }
-            if (nonce % 100000 == 0) {
-                cout << "   ... bandyta nonce " << nonce << "\r" << flush;
-            }
-        }
-        auto ms = chrono::duration_cast<chrono::milliseconds>(
-                      chrono::high_resolution_clock::now() - start).count();
-        cout << "\n Iskasta! nonce=" << block.header().getNonce()
-             << " hash=" << block.block_hash() << " (" << ms << " ms)\n";
-    }
-
-        void addBlock(const Block& block) {
+    // Dabar addBlock priima UserManager, nes jis taiko balansus
+    void addBlock(const Block& block, UserManager& users) {
         cout << " Pridedame bloka #" << chain_.size()
              << "  tx=" << block.transactions().size() << "\n";
 
+        // Paprastos validacijos (realiai čia darytum daugiau)
+        if (block.header().getPrev_hash() != tip().block_hash()) {
+            cout << "   [SKIPPED] blogas prev_hash\n"; return;
+        }
+        if (!starts_with_zeros(block.block_hash(), block.header().getDifficulty())) {
+            cout << "   [SKIPPED] netenkina difficulty\n"; return;
+        }
+        if (Block::computeTransactionsHash(block.transactions()) != block.header().getTransactions_hash()) {
+            cout << "   [SKIPPED] neteisingas transactions_hash\n"; return;
+        }
+
         for (const auto& tx : block.transactions()) {
-            auto sIt = users_.find(tx.getSender());
-            auto rIt = users_.find(tx.getReceiver());
-            bool ok = false;
-            if (sIt != users_.end() && rIt != users_.end()) {
-                if (sIt->second.withdraw(tx.getAmount())) {
-                    rIt->second.deposit(tx.getAmount());
-                    ok = true;
-                }
-            }
+            bool ok = users.withdraw(tx.getSender(), tx.getAmount());
+            if (ok) users.deposit(tx.getReceiver(), tx.getAmount());
             cout << "   TX " << tx.getId().substr(0,10) << "... "
                  << tx.getSender().substr(0,8) << " -> " << tx.getReceiver().substr(0,8)
                  << " amt=" << tx.getAmount() << (ok ? " [APPLIED]" : " [SKIPPED]") << "\n";
         }
 
-        vector<string> ids; ids.reserve(block.transactions().size());
-        for (auto& t : block.transactions()) ids.push_back(t.getId());
-        pending_.erase(remove_if(pending_.begin(), pending_.end(),
-            [&](const Transaction& t){ return find(ids.begin(), ids.end(), t.getId()) != ids.end(); }),
-            pending_.end());
-
         chain_.push_back(block);
 
         cout << "   Grandinės aukstis (be genesis): " << (chain_.size()-1) << "\n";
-        cout << "   Liko laukiama transakciju: " << pending_.size() << "\n";
         cout << "   Bloko hash: " << block.block_hash() << "\n";
         cout << "   Prev hash : " << block.header().getPrev_hash().substr(0,16) << "...\n";
     }
-        void run(int maxBlocks = -1) {
-        int produced = 0;
-        while (!pending_.empty()) {
-            if (maxBlocks > 0 && produced >= maxBlocks) break;
-            Block b = formCandidateBlock();
-            if (b.transactions().empty()) break;
-            mine(b);
-            addBlock(b);
-            ++produced;
-            cout << "------------------------------------------------------------\n";
-        }
-        cout << " Baigta. Iskasta bloku: " << produced
-             << " | grandines aukstis (be genesis): " << (chain_.size()-1) << "\n";
-    }
 
 private:
-    
     vector<Block> chain_;
-    vector<Transaction> pending_;
-    unordered_map<string, User> users_;
-
-    
     unsigned difficulty_;
-    unsigned txPerBlock_;
-    mt19937_64 rng_;
-
-    
-    string randomName() {
-        static const char* syl[] = {"va","de","ra","li","no","ka","mi","to","sa","re","na","zo"};
-        uniform_int_distribution<int> nSyl(2,3);
-        uniform_int_distribution<int> pick(0, (int)(sizeof(syl)/sizeof(syl[0]))-1);
-        string s;
-        int k = nSyl(rng_);
-        for (int i = 0; i < k; ++i) s += syl[pick(rng_)];
-        s[0] = (char)toupper(s[0]);
-        return s;
-    }
-    string randomPublicKey() {
-        static const char* hex = "0123456789abcdef";
-        uniform_int_distribution<int> d(0, 15);
-        string s = "PUB";
-        for (int i = 0; i < 33; ++i) s += hex[d(rng_)];
-        return s;
-    }
 };
+
 int main(int argc, char** argv) {
     unsigned difficulty = 3;   // kiek "0" hash pradžioje
     unsigned users      = 1000;
     unsigned txCount    = 10000;
     unsigned txPerBlock = 100;
-    int      maxBlocks  = -1;  
-
+    int      maxBlocks  = -1;
 
     for (int i = 1; i < argc; ++i) {
         string a = argv[i];
@@ -497,14 +390,36 @@ int main(int argc, char** argv) {
          << " txPerBlock=" << txPerBlock
          << " maxBlocks=" << maxBlocks << "\n\n";
 
+    // Moduliai
+    UserManager um;
+    um.generateUsers(users);
+
+    TxPool pool;
+    mt19937_64 rng(random_device{}());
+    generateTransactions(pool, um.keys(), txCount, rng);
+
     Blockchain bc(difficulty, txPerBlock);
-    bc.generateUsers(users);
-    bc.generateTransactions(txCount);
-    bc.run(maxBlocks);
+    Miner miner(difficulty);
+
+    // Mining ciklas
+    int produced = 0;
+    while (pool.size() > 0) {
+        if (maxBlocks > 0 && produced >= maxBlocks) break;
+        Block b = miner.makeCandidate(bc.tip().block_hash(), difficulty, txPerBlock, pool);
+        if (b.transactions().empty()) break;
+        miner.mine(b);
+        bc.addBlock(b, um);
+        ++produced;
+        cout << "------------------------------------------------------------\n";
+    }
+
+    cout << " Baigta. Iskasta bloku: " << produced
+         << " | grandines aukstis (be genesis): " << bc.height() << "\n";
 
     cout << "Viso gero!\n";
     return 0;
 }
+
 
 
 
