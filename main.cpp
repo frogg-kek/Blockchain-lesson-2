@@ -16,18 +16,13 @@ using namespace std;
 #define HASH_DYDIS 32
 #endif
 
-// Trumpas failo aprašymas (pradedantiesiems):
+// Trumpas failo aprašymas:
 // Ši programa demonstruoja supaprastintą blokų grandinę.
-// - `HashFunkcija` yra demonstracinė maišos funkcija (NE kriptografiškai saugi)
+// - `HashFunkcija` yramaišos funkcija 
 // - `User`, `Transaction`, `UserManager` ir `TxPool` yra paprasti modeliai
 // - `Block`/`BlockHeader` atvaizduoja blokus ir jų antraštes
-// - `Miner` bando surasti nonce, kad blokas atitiktų difficulty (maišo pradžioje turi būti '0')
-// Kodo tikslas: mokytis, ne gamybinė implementacija.
+// - `Miner` bando surasti nonce, kad blokas atitiktų difficulty (maišos pradžioje turi būti '0')
 
-// HASH FUNKCIJA
-// Paprasta demonstracinė "maišos" funkcija.
-// Pastaba pradedantiesiems: tikros maišos funkcijos (pvz., SHA-256) yra sudėtingesnės ir
-// kriptografiškai saugios. Čia naudojama deterministinė, reproducibile funkcija mokymuisi.
 std::string HashFunkcija(std::string tekstas){
     unsigned char hash[HASH_DYDIS] = {0};
 
@@ -78,7 +73,6 @@ std::string HashFunkcija(std::string tekstas){
 
 // PAGALBINES FUNKCIJOS REIKALINGOS 0 PATIKRINIMUI
 // Patikrina, ar heksadinio hašo pradžia turi reikiamą kiekį '0' simbolių.
-// Tai supaprastintas būdas pavaizduoti sunkumą (difficulty).
 static inline bool starts_with_zeros(const string& hexHash, unsigned zeros) {
     if (hexHash.size() < zeros) return false;
     for (unsigned i = 0; i < zeros; ++i) if (hexHash[i] != '0') return false;
@@ -90,7 +84,6 @@ static inline uint64_t nowSec() {
     return duration_cast<seconds>(system_clock::now().time_since_epoch()).count();
 }
 
-// nowSec() grąžina dabartinį laiką sekundėmis nuo UNIX epoch (naudojama timestampams).
 
 // VARTOTOJO KLASĖ
 class User {
@@ -149,8 +142,6 @@ class UserManager {
 public:
     void generateUsers(size_t nUsers) {
         // Sukuriame atsitiktinius pradinius balansus.
-        // Jei norite kontroliuoti intervalą, čia galite pakeisti 0 ir 1'000'000.
-        // Pvz., uniform_int_distribution<long long> bal(100, 1'000'000);
         uniform_int_distribution<long long> bal(0, 1'000'000);
         for (size_t i = 0; i < nUsers; ++i) {
             string name = randomName();
@@ -191,11 +182,11 @@ private:
     string randomPublicKey() {
         static const char* hex = "0123456789abcdef";
         uniform_int_distribution<int> d(0, 15);
-        string s = "PUB"; for (int i = 0; i < 33; ++i) s += hex[d(rng_)]; return s;
+        string s = "PUB"; 
+        for (int i = 0; i < 33; ++i) s += hex[d(rng_)];
+        return s;
     }
 };
-
-// UserManager: paprastas vartotojų tvarkymas. Naudokite generateUsers() prieš generuojant transakcijas.
 
 class TxPool {
 public:
@@ -214,7 +205,6 @@ private:
 };
 
 // Funkcija, kuri sugeneruoja nTx atsitiktinių transakcijų ir įdeda jas į pool.
-// Paaiškinimas pradedantiesiems:
 // - `keys` yra vartotojų vieši raktai (iš UserManager::keys())
 // - Imame atsitiktinį siuntėją ir gavėją (skirtingus) ir sumą iš intervalo
 // - Kiekviena transakcija gauna timestamp'ą dabar ir unikalų ID per HashFunkcija
@@ -242,9 +232,9 @@ public:
     // Pagrindiniai laukai:
     // - prev_hash: nuoroda į ankstesnio bloko hashą
     // - timestamp: kada blokas buvo sukurtas
-    // - transactions_hash: Merkle root arba kažkokia transakcijų santrauka
-    // - nonce: skaičius, kurį kinta kasėjai bandydami surasti galiojantį hash
-    // - difficulty: kiek '0' reikia hašo pradžioje (supaprastintas sunkumas)
+    // - transactions_hash: Merkle root
+    // - nonce: skaičius, kuris kinta, kai kasėjai bandydami surasti galiojantį hash
+    // - difficulty: kiek '0' reikia hašo pradžioje
 
     void set_prev_hash(string v) { prev_hash_ = std::move(v); }
     void set_timestamp(uint64_t v) { timestamp_ = v; }
@@ -406,7 +396,7 @@ private:
 // BLOCKCHAIN KLASĖ
 class Blockchain {
 public:
-    explicit Blockchain(unsigned difficulty, unsigned /*txPerBlock*/ = 100)
+    explicit Blockchain(unsigned difficulty, unsigned = 100)
     : difficulty_(difficulty) {
         // Genesis
         Block genesis;
@@ -453,7 +443,6 @@ public:
              continue;
           }
 
-          // Apply balances: withdraw returns false if sender missing or insufficient
           bool ok = users.withdraw(tx.getSender(), tx.getAmount());
           if (ok) 
           users.deposit(tx.getReceiver(), tx.getAmount());
@@ -532,7 +521,7 @@ int main(int argc, char** argv) {
         }
         if (candidates.empty()) break;
 
-        // Pradiniai limitai (pvz., 5s ir tam tikras bandymų skaičius)
+        // Pradiniai limitai
         uint64_t timeLimitMs = 5000; // 5 seconds
         uint64_t maxAttempts = 5000; // pradinis bandymų limitas
         bool mined = false;
