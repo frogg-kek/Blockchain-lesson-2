@@ -148,6 +148,7 @@ private:
 
 class UserManager {
 public:
+    // main deklracija, tai kad NEPASIMEST SITA user ten kintamasis 
     void generateUsers(size_t nUsers) {
         // Sukuriame atsitiktinius pradinius balansus.
         uniform_int_distribution<long long> bal(100, 1000000);
@@ -184,7 +185,10 @@ private:
         static const char* syl[] = {"va","de","ra","li","no","ka","mi","to","sa","re","na","zo"};
         uniform_int_distribution<int> nSyl(2,3);
         uniform_int_distribution<int> pick(0, (int)(sizeof(syl)/sizeof(syl[0]))-1);
-        string s; int k = nSyl(rng_); for (int i = 0; i < k; ++i) s += syl[pick(rng_)];
+        string s; 
+        int k = nSyl(rng_); 
+        for (int i = 0; i < k; ++i) 
+            s += syl[pick(rng_)];
         s[0] = (char)toupper(s[0]); return s;
     }
     string randomPublicKey() {
@@ -200,6 +204,7 @@ class TxPool {
 public:
     void push(Transaction tx) { pending_.push_back(std::move(tx)); }
 
+    // main deklaracija nepamentimui naudojat txcount
     vector<Transaction> take(size_t maxCount) {
         size_t takeN = std::min(maxCount, pending_.size());
         vector<Transaction> out; out.reserve(takeN);
@@ -458,7 +463,7 @@ public:
         size_t applied = 0, skipped = 0, coinbaseCount = 0;
 
         for (const auto& tx : block.transactions()) {
-            // Verify transaction ID (recompute) to detect tampering
+            
             string expectedId = HashFunkcija(tx.getSender() + tx.getReceiver() + to_string(tx.getAmount()) + to_string(tx.getTimestamp()));
             if (expectedId != tx.getId()) {
                 cout << "   TX " << tx.getId().substr(0,10) << "... INVALID ID - skipped\n";
@@ -532,7 +537,7 @@ int main(int argc, char** argv) {
     // - Blockchain: pati grandinė su genesis bloku
     // - Miner: objektas, kuris bando "kasti" blokus
     UserManager um;
-    um.generateUsers(users);
+    um.generateUsers(users); // 1000 
 
     TxPool pool;
     mt19937_64 rng(random_device{}());
