@@ -500,7 +500,8 @@ private:
 };
 
 int main(int argc, char** argv) {
-    unsigned difficulty = 3;   // kiek "0" hash pradžioje
+
+    unsigned difficulty = 9;   // kiek "0" hash pradžioje
     unsigned users      = 1000;
     unsigned txCount    = 10000;
     unsigned txPerBlock = 100;
