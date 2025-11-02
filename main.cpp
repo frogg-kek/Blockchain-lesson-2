@@ -71,6 +71,14 @@ std::string HashFunkcija(std::string tekstas){
     return out; 
 }
 
+// Simple logger helper (small, sync to stdout)
+struct Logger {
+    static void info(const std::string& s) { std::cout << "[INFO] " << s << "\n"; }
+    static void warn(const std::string& s) { std::cout << "[WARN] " << s << "\n"; }
+    static void dbg(const std::string& s)  { std::cout << "[DBG] "  << s << "\n"; }
+    static void summary(const std::string& s) { std::cout << "=== " << s << " ===\n"; }
+};
+
 // PAGALBINES FUNKCIJOS REIKALINGOS 0 PATIKRINIMUI
 // Patikrina, ar heksadinio hašo pradžia turi reikiamą kiekį '0' simbolių.
 static inline bool starts_with_zeros(const string& hexHash, unsigned zeros) {
@@ -431,53 +439,56 @@ public:
 
     // Dabar addBlock priima UserManager, nes jis taiko balansus
     void addBlock(const Block& block, UserManager& users) {
-        // addBlock daro kelis dalykus:
-        // 1) Patikrina, ar bloko prev_hash sutampa su grandinės tipu
-        // 2) Patikrina, ar bloko hash atitinka difficulty
-        // 3) Patikrina, ar transactions_hash sutampa su transakcijų Merkle root
-        // 4) Taiko kiekvieną transakciją į vartotojų balansus (withdraw/deposit)
-        // Jei transakcija neteisinga (pvz., ID neteisingas arba siuntėjas neturi lėšų), ji praleidžiama.
-        cout << " Pridedame bloka #" << chain_.size()
-             << "  tx=" << block.transactions().size() << "\n";
+        Logger::info("Pridedame bloka #" + to_string(chain_.size()) + "  tx=" + to_string(block.transactions().size()));
 
-        // Paprastos validacijos 
+        // basic validations
         if (block.header().getPrev_hash() != tip().block_hash()) {
-            cout << "   [SKIPPED] blogas prev_hash\n"; return;
+            Logger::warn("[SKIPPED] blogas prev_hash");
+            return;
         }
         if (!starts_with_zeros(block.block_hash(), block.header().getDifficulty())) {
-            cout << "   [SKIPPED] netenkina difficulty\n"; return;
+            Logger::warn("[SKIPPED] netenkina difficulty");
+            return;
         }
         if (Block::computeTransactionsHash(block.transactions()) != block.header().getTransactions_hash()) {
-            cout << "   [SKIPPED] neteisingas transactions_hash\n"; return;
+            Logger::warn("[SKIPPED] neteisingas transactions_hash");
+            return;
         }
 
+        size_t applied = 0, skipped = 0, coinbaseCount = 0;
+
         for (const auto& tx : block.transactions()) {
-          // Verify transaction ID (recompute) to detect tampering
-          string expectedId = HashFunkcija(tx.getSender() + tx.getReceiver() + to_string(tx.getAmount()) + to_string(tx.getTimestamp()));
-          if (expectedId != tx.getId()) {
-             cout << "   TX " << tx.getId().substr(0,10) << "... "
-                 << "INVALID ID - skipped\n";
-             continue;
-          }
+            // Verify transaction ID (recompute) to detect tampering
+            string expectedId = HashFunkcija(tx.getSender() + tx.getReceiver() + to_string(tx.getAmount()) + to_string(tx.getTimestamp()));
+            if (expectedId != tx.getId()) {
+                cout << "   TX " << tx.getId().substr(0,10) << "... INVALID ID - skipped\n";
+                ++skipped; continue;
+            }
 
-          // If this is a coinbase (miner reward) transaction, just credit the receiver
-          if (tx.getSender() == "COINBASE") {
-              users.deposit(tx.getReceiver(), tx.getAmount());
-              cout << "   TX " << tx.getId().substr(0,10) << "... "
-                   << "COINBASE -> " << tx.getReceiver().substr(0,8)
-                   << " amt=" << tx.getAmount() << " [COINBASE APPLIED]\n";
-              continue;
-          }
+            // coinbase
+            if (tx.getSender() == "COINBASE") {
+                users.deposit(tx.getReceiver(), tx.getAmount());
+                cout << "   TX " << tx.getId().substr(0,10) << "... COINBASE -> " << tx.getReceiver().substr(0,8)
+                     << " amt=" << tx.getAmount() << " [COINBASE APPLIED]\n";
+                ++coinbaseCount; ++applied; continue;
+            }
 
-          bool ok = users.withdraw(tx.getSender(), tx.getAmount());
-          if (ok) users.deposit(tx.getReceiver(), tx.getAmount());
-          cout << "   TX " << tx.getId().substr(0,10) << "... "
-              << tx.getSender().substr(0,8) << " -> " << tx.getReceiver().substr(0,8)
-              << " amt=" << tx.getAmount() << (ok ? " [APPLIED]" : " [SKIPPED: insufficient balance or unknown]") << "\n";
+            bool ok = users.withdraw(tx.getSender(), tx.getAmount());
+            if (ok) { users.deposit(tx.getReceiver(), tx.getAmount()); ++applied; }
+            else ++skipped;
+
+            cout << "   TX " << tx.getId().substr(0,10) << "... "
+                 << tx.getSender().substr(0,8) << " -> " << tx.getReceiver().substr(0,8)
+                 << " amt=" << tx.getAmount() << (ok ? " [APPLIED]" : " [SKIPPED: insufficient balance or unknown]") << "\n";
         }
 
         chain_.push_back(block);
 
+        // summary
+        Logger::summary("Block summary");
+        cout << "   Applied tx: " << applied << "\n";
+        cout << "   Skipped tx: " << skipped << "\n";
+        cout << "   Coinbase tx: " << coinbaseCount << "\n";
         cout << "   Grandines aukstis (be genesis): " << (chain_.size()-1) << "\n";
         cout << "   Bloko hash: " << block.block_hash() << "\n";
         cout << "   Prev hash : " << block.header().getPrev_hash().substr(0,16) << "...\n";
@@ -571,8 +582,12 @@ int main(int argc, char** argv) {
 
             if (!mined) {
                 // jei niekas neiškasta, padidinti limitus ir kartoti
-                cout << "  Niekas neiškasta šiame raunde, pakeiskite limitus\n";
+                cout << "  Niekas neiškasta šiame raunde, didiname limitus ir kartojame\n";
+                // padidiname ribas
+                timeLimitMs = timeLimitMs * 2;
+                if (maxAttempts > 0) maxAttempts = maxAttempts * 2;
             }
+            ++round;
         }
 
         if (mined) {
