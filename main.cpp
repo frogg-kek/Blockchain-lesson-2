@@ -329,7 +329,8 @@ private:
 // MINER KLASĖ
 class Miner {
 public:
-    explicit Miner(unsigned difficulty) : difficulty_(difficulty) {}
+    explicit Miner(unsigned difficulty, string minerPublicKey, long long reward = 50)
+    : difficulty_(difficulty), minerPub_(std::move(minerPublicKey)), reward_(reward) {}
 
     // Miner klasė atvaizduoja vieno kasėjo elgesį:
     // - makeCandidate: sukuria bloko kandidatą (prideda transakcijas, nustato prev_hash ir difficulty)
@@ -345,6 +346,10 @@ public:
 
         auto picked = pool.take(txPerBlock);
         b.transactions() = std::move(picked);
+
+        // Prepend a coinbase (miner reward) transaction so miner gets paid if block is accepted
+        Transaction coinbase("COINBASE", minerPub_, reward_, nowSec());
+        b.transactions().insert(b.transactions().begin(), std::move(coinbase));
 
         b.header().set_transactions_hash(Block::computeTransactionsHash(b.transactions()));
         return b;
@@ -401,6 +406,8 @@ public:
 
 private:
     unsigned difficulty_;
+    string minerPub_;
+    long long reward_{0};
 };
 
 // BLOCKCHAIN KLASĖ
@@ -453,9 +460,17 @@ public:
              continue;
           }
 
+          // If this is a coinbase (miner reward) transaction, just credit the receiver
+          if (tx.getSender() == "COINBASE") {
+              users.deposit(tx.getReceiver(), tx.getAmount());
+              cout << "   TX " << tx.getId().substr(0,10) << "... "
+                   << "COINBASE -> " << tx.getReceiver().substr(0,8)
+                   << " amt=" << tx.getAmount() << " [COINBASE APPLIED]\n";
+              continue;
+          }
+
           bool ok = users.withdraw(tx.getSender(), tx.getAmount());
-          if (ok) 
-          users.deposit(tx.getReceiver(), tx.getAmount());
+          if (ok) users.deposit(tx.getReceiver(), tx.getAmount());
           cout << "   TX " << tx.getId().substr(0,10) << "... "
               << tx.getSender().substr(0,8) << " -> " << tx.getReceiver().substr(0,8)
               << " amt=" << tx.getAmount() << (ok ? " [APPLIED]" : " [SKIPPED: insufficient balance or unknown]") << "\n";
@@ -512,7 +527,10 @@ int main(int argc, char** argv) {
     generateTransactions(pool, um.keys(), txCount, rng);
 
     Blockchain bc(difficulty, txPerBlock);
-    Miner miner(difficulty);
+    // pick one generated user as miner (so rewards go to a real account)
+    auto allKeys = um.keys();
+    string minerKey = allKeys.empty() ? string("MINER_PUB") : allKeys[0];
+    Miner miner(difficulty, minerKey, /*reward=*/50);
 
     // Mining ciklas
     int produced = 0;
