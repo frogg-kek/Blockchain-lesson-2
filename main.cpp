@@ -71,7 +71,7 @@ std::string HashFunkcija(std::string tekstas){
     return out; 
 }
 
-// Simple logger helper (small, sync to stdout)
+
 struct Logger {
     static void info(const std::string& s) { std::cout << "[INFO] " << s << "\n"; }
     static void warn(const std::string& s) { std::cout << "[WARN] " << s << "\n"; }
