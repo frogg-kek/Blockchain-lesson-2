@@ -419,7 +419,7 @@ public:
         Block genesis;
         genesis.header().set_prev_hash(string(HASH_DYDIS * 2, '0'));
         genesis.header().set_timestamp(nowSec());
-        genesis.header().set_version("v0.1");
+        genesis.header().set_version("v2025");
         genesis.header().set_difficulty(difficulty_);
         genesis.header().set_transactions_hash(Block::computeTransactionsHash(genesis.transactions()));
         genesis.set_block_hash(HashFunkcija(genesis.header().to_string()));
@@ -440,7 +440,7 @@ public:
         cout << " Pridedame bloka #" << chain_.size()
              << "  tx=" << block.transactions().size() << "\n";
 
-        // Paprastos validacijos (realiai čia darytum daugiau)
+        // Paprastos validacijos 
         if (block.header().getPrev_hash() != tip().block_hash()) {
             cout << "   [SKIPPED] blogas prev_hash\n"; return;
         }
@@ -571,10 +571,7 @@ int main(int argc, char** argv) {
 
             if (!mined) {
                 // jei niekas neiškasta, padidinti limitus ir kartoti
-                timeLimitMs *= 2;
-                maxAttempts *= 2;
-                ++round;
-                cout << "  Niekas neiškasta šiame raunde, didiname limitus ir kartojame\n";
+                cout << "  Niekas neiškasta šiame raunde, pakeiskite limitus\n";
             }
         }
 
