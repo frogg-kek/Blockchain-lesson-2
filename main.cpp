@@ -7,6 +7,7 @@
 #include <random>
 #include <string>
 #include <unordered_map>
+#include <unordered_set>
 #include <vector>
 #include <iostream>
 
@@ -124,51 +125,57 @@ struct TxOutput {
     string receiventPubKey;
     long long amount{0};
 
-    string sujungimas() const {
-        return recipientPubKey + ":" + to_string(amount);
-    }
-
-    string signature() const {
-        return HashFunkcija(sujungimas());
+    string serialize() const {
+        return receiventPubKey + ":" + to_string(amount);
     }
 };
 
 struct TxInput {
     string prevTxId;       
-    unsigned outputIndex;   
+    uint32_t outputIndex;   
     string senderPubKey;  
     string signature;  
 
     string sujunginmas() const {
         return prevTxId + ":" + to_string(outputIndex) + ":" + senderPubKey + ":" + signature;
-    }
-
-    string signature() const {
-        return HashFunkcija(serialize());
-    }
-    
+    } 
 };
 
 // TRANSAKCIJOS KLASĖ
 class Transaction {
 public:
 
-    // Transaction laiko siuntėją, gavėją, sumą ir timestamp'ą.
-    // Konstruktorius taip pat sukurs ID = HashFunkcija(sender+receiver+amount+timestamp)
-    // - ID naudojamas unikaliai identifikuoti transakciją ir vėlesnei patikrai
+    
     Transaction() = default;
 
-    Transaction(vecotr<TxInput> inputs, vector<TxOutput> outputs, uint64_t timestamp) 
+    Transaction(vector<TxInput> inputs, vector<TxOutput> outputs, uint64_t timestamp) 
     : inputs_(std::move(inputs)), outputs_(std::move(outputs)), timestamp_(timestamp) {
-        
         computeId();
     }
-
 
     const string& getId() const { return id_; }
     uint64_t getTimestamp() const { return timestamp_; }
     const vector<TxInput>& getInputs() const { return inputs_; }
+    vector<TxInput>& getInputs() { return inputs_; } // parasu saugojimui
     const vector<TxOutput>& getOutputs() const { return outputs_; }
+
+    std::string serialiseCanonical() const {
+        std::string s;
+        s += to_string(timestamp_) + "|";
+        s += to_string(inputs_.size()) + ";";
+        for (const auto& inp : inputs_) {
+            s += inp.prevTxId + "," + std::to_string(inp.outputIndex) + ";" + inp.senderPubKey + ";";
+        }
+        s += std::to_string(outputs_.size()) + "|";
+        for (const auto& outp : outputs_) {
+            s += outp.receiventPubKey + "," + std::to_string(outp.amount) + ";";
+        }
+        return s;
+    }
+
+    void computeId(){
+        id_ = HashFunkcija(serialiseCanonical());
+    }
 
 private:
     string id_;
@@ -176,19 +183,52 @@ private:
     vector<TxInput> inputs_;
     vector<TxOutput> outputs_;
 
-    void computeId(){
-        string ConnectedData;
+};
 
-        ConnectedData += to_string(timestamp_);
-        for(const auto& input : inputs_){
-            ConnectedData += input.sujungimas();
+// Простая UTXO saugykla
+class UTXOPool {
+public:
+    void add(const string& txid, uint32_t index, const TxOutput& out) {
+        map_[key(txid, index)] = out;
     }
-        for(const auto& output : outputs_){
-            ConnectedData += output.sujungimas();
-        }
 
-        id_ = HashFunkcija(ConnectedData);
+    bool exists(const string& txid, uint32_t index) const {
+        return map_.find(key(txid, index)) != map_.end();
     }
+
+    bool get(const string& txid, uint32_t index, TxOutput& out) const {
+        auto it = map_.find(key(txid, index));
+        if (it == map_.end()) return false;
+        out = it->second; return true;
+    }
+
+    bool remove(const string& txid, uint32_t index) {
+        return map_.erase(key(txid, index)) > 0;
+    }
+
+    // Return all keys (txid:index) currently in pool
+    vector<string> listKeys() const {
+        vector<string> out; out.reserve(map_.size());
+        for (auto& kv : map_) out.push_back(kv.first);
+        return out;
+    }
+
+    // helper to parse key
+    static string key(const string& txid, uint32_t index) {
+        return txid + ":" + to_string(index);
+    }
+
+    // parse key into txid and index
+    static bool parseKey(const string& k, string& txid, uint32_t& index) {
+        auto p = k.find(':');
+        if (p == string::npos) return false;
+        txid = k.substr(0, p);
+        index = (uint32_t)stoul(k.substr(p+1));
+        return true;
+    }
+
+private:
+    unordered_map<string, TxOutput> map_;
 };
 
 class UserManager {
@@ -272,22 +312,53 @@ private:
     mt19937_64 rng_{random_device{}()};
 };
 
-// Funkcija, kuri sugeneruoja nTx atsitiktinių transakcijų ir įdeda jas į pool.
-// - `keys` yra vartotojų vieši raktai (iš UserManager::keys())
-// - Imame atsitiktinį siuntėją ir gavėją (skirtingus) ir sumą iš intervalo
-// - Kiekviena transakcija gauna timestamp'ą dabar ir unikalų ID per HashFunkcija
-static void generateTransactions(TxPool& pool, const vector<string>& keys, size_t nTx, mt19937_64& rng) {
-    if (keys.size() < 2) return;
-    uniform_int_distribution<long long> amt(1, 5000);
-    uniform_int_distribution<size_t> pick(0, keys.size()-1);
+// Funkcija, kuri sugeneruoja nTx atsitiktinių UTXO transakcijų ir įdeda jas į pool.
+// - `allKeys` yra vartotojų vieši raktai (iš UserManager::keys())
+// - Imame atsitiktinį UTXO (iš utxoPool), suformuojame vieno-input transakciją
+// - Iš each UTXO sukuriame tx: siunčiame dalį gavėjui ir grąža lieka siuntėjui
+static void generateTransactions(TxPool& pool, const vector<string>& allKeys, const UTXOPool& utxoPool, size_t nTx, mt19937_64& rng) {
+    if (allKeys.size() < 2) return;
+    auto available = utxoPool.listKeys();
+    if (available.empty()) return;
 
-    for (size_t i = 0; i < nTx; ++i) {
-        const string& sender = keys[pick(rng)];
+    uniform_int_distribution<size_t> pickAvail(0, available.size()-1);
+    uniform_int_distribution<size_t> pickKey(0, allKeys.size()-1);
+
+    size_t created = 0;
+    while (created < nTx && !available.empty()) {
+        // pick a random available utxo and then remove it from local list to avoid double-using
+        size_t idx = pickAvail(rng) % available.size();
+        string key = available[idx];
+        // remove by swap-pop
+        if (idx != available.size()-1) available[idx] = available.back();
+        available.pop_back();
+
+        string prevTxId; uint32_t outIdx;
+        if (!UTXOPool::parseKey(key, prevTxId, outIdx)) continue;
+        TxOutput prevOut;
+        if (!utxoPool.get(prevTxId, outIdx, prevOut)) continue;
+
+        const string& sender = prevOut.receiventPubKey;
+        // choose receiver different from sender
         string receiver;
-        do { receiver = keys[pick(rng)]; } while (receiver == sender);
-        long long amount = amt(rng);
-        pool.push(Transaction(sender, receiver, amount, nowSec()));
+        do { receiver = allKeys[pickKey(rng)]; } while (receiver == sender && allKeys.size() > 1);
+
+        uniform_int_distribution<long long> amt(1, prevOut.amount);
+        long long sendAmt = amt(rng);
+
+        // build tx: one input, one or two outputs (to receiver and change back to sender)
+        TxInput in; in.prevTxId = prevTxId; in.outputIndex = outIdx; in.senderPubKey = sender; in.signature = "";
+        vector<TxInput> inputs{in};
+        vector<TxOutput> outputs;
+        outputs.push_back(TxOutput{receiver, sendAmt});
+        long long change = prevOut.amount - sendAmt;
+        if (change > 0) outputs.push_back(TxOutput{sender, change});
+
+        Transaction tx(inputs, outputs, nowSec());
+        pool.push(std::move(tx));
+        ++created;
     }
+
     cout << " Sugeneruota laukiama transakciju: " << pool.size() << "\n";
 }
 
@@ -405,9 +476,11 @@ public:
         auto picked = pool.take(txPerBlock);
         b.transactions() = std::move(picked);
 
-        // Prepend a coinbase (miner reward) transaction so miner gets paid if block is accepted
-        Transaction coinbase("COINBASE", minerPub_, reward_, nowSec());
-        b.transactions().insert(b.transactions().begin(), std::move(coinbase));
+    // Prepend a coinbase (miner reward) transaction so miner gets paid if block is accepted
+    vector<TxInput> cbIn; // empty inputs
+    vector<TxOutput> cbOuts; cbOuts.push_back(TxOutput{minerPub_, reward_});
+    Transaction coinbase(std::move(cbIn), std::move(cbOuts), nowSec());
+    b.transactions().insert(b.transactions().begin(), std::move(coinbase));
 
         b.header().set_transactions_hash(Block::computeTransactionsHash(b.transactions()));
         return b;
@@ -487,8 +560,8 @@ public:
     const Block& tip() const { return chain_.back(); }
     size_t height() const { return chain_.size() - 1; } // be genesis
 
-    // Dabar addBlock priima UserManager, nes jis taiko balansus
-    void addBlock(const Block& block, UserManager& users) {
+    // UTXO-based addBlock: validates inputs exist in UTXO pool, sums, and applies changes to pool
+    void addBlock(const Block& block, UTXOPool& utxos) {
         Logger::info("Pridedame bloka #" + to_string(chain_.size()) + "  tx=" + to_string(block.transactions().size()));
 
         // basic validations
@@ -507,29 +580,46 @@ public:
 
         size_t applied = 0, skipped = 0, coinbaseCount = 0;
 
+        // track spent outputs within this block to prevent double-spend inside the same block
+        unordered_set<string> spentInBlock;
+
         for (const auto& tx : block.transactions()) {
-            
-            string expectedId = HashFunkcija(tx.getSender() + tx.getReceiver() + to_string(tx.getAmount()) + to_string(tx.getTimestamp()));
-            if (expectedId != tx.getId()) {
-                cout << "   TX " << tx.getId().substr(0,10) << "... INVALID ID - skipped\n";
-                ++skipped; continue;
+            // coinbase (no inputs)
+            if (tx.getInputs().empty()) {
+                // add outputs as new UTXOs
+                const auto& outs = tx.getOutputs();
+                for (size_t i = 0; i < outs.size(); ++i) utxos.add(tx.getId(), (uint32_t)i, outs[i]);
+                ++coinbaseCount; ++applied;
+                cout << "   TX " << tx.getId().substr(0,10) << "... COINBASE applied, outs=" << outs.size() << "\n";
+                continue;
             }
 
-            // coinbase
-            if (tx.getSender() == "COINBASE") {
-                users.deposit(tx.getReceiver(), tx.getAmount());
-                cout << "   TX " << tx.getId().substr(0,10) << "... COINBASE -> " << tx.getReceiver().substr(0,8)
-                     << " amt=" << tx.getAmount() << " [COINBASE APPLIED]\n";
-                ++coinbaseCount; ++applied; continue;
+            // validate inputs exist and belong to stated sender
+            long long sumIn = 0;
+            bool ok = true;
+            for (const auto& inp : tx.getInputs()) {
+                string key = UTXOPool::key(inp.prevTxId, inp.outputIndex);
+                if (spentInBlock.find(key) != spentInBlock.end()) { ok = false; break; }
+                TxOutput prevOut;
+                if (!utxos.get(inp.prevTxId, inp.outputIndex, prevOut)) { ok = false; break; }
+                if (inp.senderPubKey != prevOut.receiventPubKey) { ok = false; break; }
+                sumIn += prevOut.amount;
             }
+            if (!ok) { ++skipped; cout << "   TX " << tx.getId().substr(0,10) << "... INVALID INPUTS - skipped\n"; continue; }
 
-            bool ok = users.withdraw(tx.getSender(), tx.getAmount());
-            if (ok) { users.deposit(tx.getReceiver(), tx.getAmount()); ++applied; }
-            else ++skipped;
+            long long sumOut = 0;
+            for (const auto& o : tx.getOutputs()) sumOut += o.amount;
+            if (sumOut > sumIn) { ++skipped; cout << "   TX " << tx.getId().substr(0,10) << "... OUTPUTS > INPUTS - skipped\n"; continue; }
 
-            cout << "   TX " << tx.getId().substr(0,10) << "... "
-                 << tx.getSender().substr(0,8) << " -> " << tx.getReceiver().substr(0,8)
-                 << " amt=" << tx.getAmount() << (ok ? " [APPLIED]" : " [SKIPPED: insufficient balance or unknown]") << "\n";
+            // apply: remove inputs and mark spent; add outputs as new UTXOs
+            for (const auto& inp : tx.getInputs()) {
+                utxos.remove(inp.prevTxId, inp.outputIndex);
+                spentInBlock.insert(UTXOPool::key(inp.prevTxId, inp.outputIndex));
+            }
+            for (size_t i = 0; i < tx.getOutputs().size(); ++i) utxos.add(tx.getId(), (uint32_t)i, tx.getOutputs()[i]);
+
+            ++applied;
+            cout << "   TX " << tx.getId().substr(0,10) << "... applied, in=" << sumIn << " out=" << sumOut << "\n";
         }
 
         chain_.push_back(block);
@@ -586,12 +676,23 @@ int main(int argc, char** argv) {
 
     TxPool pool;
     mt19937_64 rng(random_device{}());
-    generateTransactions(pool, um.keys(), txCount, rng);
+    // Create initial UTXO set from generated users (fund each user with their starting balance)
+    UTXOPool utxoPool;
+    for (const auto& kv : um.all()) {
+        const string& pk = kv.first;
+        long long bal = kv.second.getBalance();
+        // create a simple funding UTXO per user
+        string fundId = HashFunkcija(string("FUND:") + pk + ":" + to_string(nowSec()));
+        TxOutput o{pk, bal};
+        utxoPool.add(fundId, 0, o);
+    }
+
+    auto keys = um.keys();
+    generateTransactions(pool, keys, utxoPool, txCount, rng);
 
     Blockchain bc(difficulty, txPerBlock);
     // pick one generated user as miner (so rewards go to a real account)
-    auto allKeys = um.keys();
-    string minerKey = allKeys.empty() ? string("MINER_PUB") : allKeys[0];
+    string minerKey = keys.empty() ? string("MINER_PUB") : keys[0];
     Miner miner(difficulty, minerKey, /*reward=*/50);
 
     // Mining ciklas
@@ -650,7 +751,7 @@ int main(int argc, char** argv) {
 
             // Pridedame iškastą bloką
             Block minedBlock = std::move(candidates[minedIndex]);
-            bc.addBlock(minedBlock, um);
+            bc.addBlock(minedBlock, utxoPool);
             ++produced;
             cout << "------------------------------------------------------------\n";
         } else {
