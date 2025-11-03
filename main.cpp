@@ -119,6 +119,36 @@ private:
     long long balance_{0};
 };
 
+// ========= UTXO MODELIO IGYVENIMAS ==========
+struct TxOutput {
+    string receiventPubKey;
+    long long amount{0};
+
+    string sujungimas() const {
+        return recipientPubKey + ":" + to_string(amount);
+    }
+
+    string signature() const {
+        return HashFunkcija(sujungimas());
+    }
+};
+
+struct TxInput {
+    string prevTxId;       
+    unsigned outputIndex;   
+    string senderPubKey;  
+    string signature;  
+
+    string serialize() const {
+        return prevTxId + ":" + to_string(outputIndex) + ":" + senderPubKey + ":" + signature;
+    }
+
+    string hash() const {
+        return HashFunkcija(serialize());
+    }
+    
+}
+
 // TRANSAKCIJOS KLASĖ
 class Transaction {
 public:
