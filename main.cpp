@@ -139,11 +139,11 @@ struct TxInput {
     string senderPubKey;  
     string signature;  
 
-    string serialize() const {
+    string sujunginmas() const {
         return prevTxId + ":" + to_string(outputIndex) + ":" + senderPubKey + ":" + signature;
     }
 
-    string hash() const {
+    string signature() const {
         return HashFunkcija(serialize());
     }
     
@@ -158,10 +158,12 @@ public:
     // - ID naudojamas unikaliai identifikuoti transakciją ir vėlesnei patikrai
     Transaction() = default;
 
-    Transaction(const string& sender, const string& receiver, long long amount, uint64_t timestamp) : sender_(sender), receiver_(receiver), amount_(amount), timestamp_(timestamp) {
-        string toHash = sender_  + receiver_  + to_string(amount_)  + to_string(timestamp_);
-        id_ = HashFunkcija(toHash);
+    Transaction(vecotr<TxInput> inputs, vector<TxOutput> outputs, uint64_t timestamp) 
+    : inputs_(std::move(inputs)), outputs_(std::move(outputs)), timestamp_(timestamp) {
+        
+        computeId();
     }
+    
 
     const string& getId() const { return id_; }
     const string& getSender() const { return sender_; }
@@ -171,10 +173,9 @@ public:
 
 private:
     string id_;
-    string sender_;
-    string receiver_;
-    long long amount_{0};
     uint64_t timestamp_{0};
+    vector<TxInput> inputs_;
+    vector<TxOutput> outputs_;
 };
 
 class UserManager {
