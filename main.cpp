@@ -73,6 +73,7 @@ std::string HashFunkcija(std::string tekstas){
 
 
 struct Logger {
+
     static void info(const std::string& s) { std::cout << "[INFO] " << s << "\n"; }
     static void warn(const std::string& s) { std::cout << "[WARN] " << s << "\n"; }
     static void dbg(const std::string& s)  { std::cout << "[DBG] "  << s << "\n"; }
@@ -150,7 +151,7 @@ class UserManager {
 public:
     // main deklracija, tai kad NEPASIMEST SITA user ten kintamasis 
     void generateUsers(size_t nUsers) {
-        // Sukuriame atsitiktinius pradinius balansus.
+        // Sukuriame atsitiktinius pradinius balansus pagal reikalavimuus
         uniform_int_distribution<long long> bal(100, 1000000);
         for (size_t i = 0; i < nUsers; ++i) {
             string name = randomName();
