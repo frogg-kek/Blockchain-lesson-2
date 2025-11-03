@@ -147,7 +147,7 @@ struct TxInput {
         return HashFunkcija(serialize());
     }
     
-}
+};
 
 // TRANSAKCIJOS KLASĖ
 class Transaction {
@@ -163,19 +163,32 @@ public:
         
         computeId();
     }
-    
+
 
     const string& getId() const { return id_; }
-    const string& getSender() const { return sender_; }
-    const string& getReceiver() const { return receiver_; }
-    long long getAmount() const { return amount_; }
     uint64_t getTimestamp() const { return timestamp_; }
+    const vector<TxInput>& getInputs() const { return inputs_; }
+    const vector<TxOutput>& getOutputs() const { return outputs_; }
 
 private:
     string id_;
     uint64_t timestamp_{0};
     vector<TxInput> inputs_;
     vector<TxOutput> outputs_;
+
+    void computeId(){
+        string ConnectedData;
+
+        ConnectedData += to_string(timestamp_);
+        for(const auto& input : inputs_){
+            ConnectedData += input.sujungimas();
+    }
+        for(const auto& output : outputs_){
+            ConnectedData += output.sujungimas();
+        }
+
+        id_ = HashFunkcija(ConnectedData);
+    }
 };
 
 class UserManager {
