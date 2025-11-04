@@ -10,6 +10,9 @@
 #include <unordered_set>
 #include <vector>
 #include <iostream>
+#include <thread>
+#include <atomic>
+#include <mutex>
 
 using namespace std;
 
@@ -512,6 +515,75 @@ public:
         }
     }
 
+    // Beginner-friendly parallel mining: multiple threads search different nonce sequences
+    // Each thread takes a different starting nonce and steps by `threadCount` so they don't
+    // overlap. Threads stop when any thread finds a valid nonce, when timeLimitMs expires,
+    // or when maxAttempts (total across all threads) is reached.
+    bool tryMineParallel(Block& block, uint64_t timeLimitMs, uint64_t maxAttempts, unsigned threadCount) {
+        if (threadCount == 0) threadCount = std::thread::hardware_concurrency();
+        if (threadCount == 0) threadCount = 2; // fallback
+        // limit to a small number to keep beginner-friendly behavior
+        if (threadCount > 8) threadCount = 8;
+
+        std::atomic<bool> found{false};
+        std::atomic<uint64_t> totalAttempts{0};
+        std::atomic<uint64_t> foundNonce{0};
+        std::string foundHash;
+        std::mutex foundMutex;
+
+        auto start = chrono::high_resolution_clock::now();
+        BlockHeader baseHeader = block.header(); // copy so threads won't write shared header
+
+        std::vector<std::thread> threads;
+        threads.reserve(threadCount);
+
+        for (unsigned tid = 0; tid < threadCount; ++tid) {
+            threads.emplace_back([&, tid]() {
+                uint64_t localNonce = baseHeader.getNonce() + tid;
+                uint64_t localAttempts = 0;
+                BlockHeader hdr = baseHeader; // per-thread copy
+
+                while (!found.load(std::memory_order_relaxed)) {
+                    if (maxAttempts != 0 && totalAttempts.load(std::memory_order_relaxed) >= maxAttempts) break;
+                    if (timeLimitMs != 0) {
+                        auto elapsed = chrono::duration_cast<chrono::milliseconds>(chrono::high_resolution_clock::now() - start).count();
+                        if ((uint64_t)elapsed >= timeLimitMs) break;
+                    }
+
+                    hdr.set_nonce(localNonce);
+                    std::string h = HashFunkcija(hdr.to_string());
+
+                    ++localAttempts;
+                    ++totalAttempts;
+
+                    if (starts_with_zeros(h, hdr.getDifficulty())) {
+                        std::lock_guard<std::mutex> lk(foundMutex);
+                        if (!found.load()) {
+                            found.store(true);
+                            foundNonce.store(localNonce);
+                            foundHash = h;
+                        }
+                        break;
+                    }
+
+                    localNonce += threadCount;
+                    if (localAttempts % 100000 == 0) {
+                        cout << "    [th " << tid << "] tried " << localAttempts << " nonces\r" << flush;
+                    }
+                }
+            });
+        }
+
+        for (auto &t : threads) if (t.joinable()) t.join();
+
+        if (found.load()) {
+            block.header().set_nonce(foundNonce.load());
+            block.set_block_hash(foundHash);
+            return true;
+        }
+        return false;
+    }
+
     void mine(Block& block) {
         cout << " Kasam bloka: " << block.transactions().size()
              << " tx... tikslas: " << block.header().getDifficulty() << " nuliai pradzioje\n";
@@ -723,10 +795,15 @@ int main(int argc, char** argv) {
         const int maxRounds = 6; // saugiklis
         while (!mined && round < maxRounds) {
             cout << "Pradedame kasimo raunda " << round+1 << ": timeLimit=" << timeLimitMs << " ms, attempts=" << maxAttempts << "\n";
-            // Actual attempts: try each candidate sequentially with limits
+            // Actual attempts: try each candidate (in parallel per-candidate)
+            unsigned threadsToUse = std::thread::hardware_concurrency();
+            if (threadsToUse == 0) threadsToUse = 2;
+            // keep small for beginner friendliness
+            if (threadsToUse > 4) threadsToUse = 4;
+
             for (size_t i = 0; i < candidates.size(); ++i) {
                 cout << "  Bandome kandidatą #" << i << " (tx=" << candidates[i].transactions().size() << ")\n";
-                if (miner.tryMine(candidates[i], timeLimitMs, maxAttempts)) {
+                if (miner.tryMineParallel(candidates[i], timeLimitMs, maxAttempts, threadsToUse)) {
                     mined = true; minedIndex = i; break;
                 }
                 // neperkopsime - tęsiame su kitais kandidatais
