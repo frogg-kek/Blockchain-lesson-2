@@ -1,14 +1,11 @@
 # Supaprastinta blokų grandinė
 
-
 ## Santrauka
 - Įvestis: sugeneruotos transakcijos, vartotojų sąrašas, difficulty, tpb (tx per block).
 - Išvestis: lokali grandinė (blockchain), log'ai apie kasimą ir blokus.
 - Sėkmės kriterijus: programa kompiliuoja, vyksta PoW kasimas, blokai pridedami ir konsolėje matosi taikytos transakcijos.
 
-## Ką realizuoja `main.cpp` (trumpai)
-
-README dabar rašo tik tai, kas faktiškai įgyvendinta faile `main.cpp`:
+## Ką realizuoja `main.cpp`
 
 - HashFunkcija: programoje yra paprasta, custom maišos funkcija `HashFunkcija(std::string)` naudojama tiek transakcijų ID, tiek blokų hašams.
 - UserManager: sugeneruoja vartotojus ir pradinius balansus (kiekvienam vartotojui sukuriamas vienas funding UTXO).
@@ -19,7 +16,7 @@ README dabar rašo tik tai, kas faktiškai įgyvendinta faile `main.cpp`:
 - TxPool: laukiančių transakcijų saugykla su paprasta atsitiktine paėmimo logika (`take`).
 - Block/BlockHeader
   - `BlockHeader` laukai: prev_hash, transactions_hash (Merkle root), nonce, timestamp, difficulty.
-  - `Block::computeTransactionsHash` realizuoja Merkle medžio skaičiavimą (žr. žemiau).
+  - `Block::computeTransactionsHash` realizuoja Merkle medžio skaičiavimą.
 - Miner
   - `Miner::makeCandidate` sukuria kandidatą (prideda coinbase tx ± pasirinktas transakcijas iš `TxPool`).
   - `Miner` turi tris kasimo metodus: `mine()` (single-thread), `tryMine()` (su limitais), `tryMineParallel()` (paprastas dauggijis sprendimas per `std::thread`).
@@ -32,15 +29,11 @@ README dabar rašo tik tai, kas faktiškai įgyvendinta faile `main.cpp`:
     - bando iškasti kiekvieną kandidatą su `tryMineParallel`,
     - kai randamas galiojantis blokas, netaikyti tx grąžinami į pool'ą ir rastas blokas pridedamas prie grandinės per `Blockchain::addBlock`.
 
-Visa kita README aprašyme buvo supaprastinta: jeigu kažkas nėra realizuota `main.cpp`, README apie tai nerašo kaip apie įvykdytą funkciją.
+## Transakacijų, UTXO modelio, Merkle root, Lygiagretaus kasimo aprašymai
 
-## Išplėstiniai klasės aprašymai (konkretūs fragmentai iš `main.cpp`)
-
-Žemiau pateikiu detalesnius aprašymus ir trumpus kodo fragmentus, kurie atitinka jūsų `main.cpp` implementaciją — taip lengviau susieti dokumentaciją su faktiniu kodu.
+Žemiau pateikiu detalesnius aprašymus ir trumpus kodo fragmentus
 
 1) Transaction (serializacija ir ID)
-
-Kodo fragmentas (dalis `Transaction` klasės):
 
 ```cpp
 std::string Transaction::serialiseCanonical() const {
@@ -61,7 +54,6 @@ void Transaction::computeId(){
   id_ = HashFunkcija(serialiseCanonical());
 }
 ```
-
 Paaiškinimas: ID generuojamas deterministiškai iš canonical serializacijos. `verifyId()` perskaičiuoja tą patį ir leidžia atpažinti klastojimą.
 
 2) Merkle root (Block::computeTransactionsHash) — faktinis kodas
@@ -97,13 +89,12 @@ bool UTXOPool::remove(const string& txid, uint32_t index) {
 4) Miner parallel snippet (pagrindinė idėja)
 
 ```cpp
-// per-thread: localNonce = base + tid; while (!found) { hdr.set_nonce(localNonce); h = HashFunkcija(hdr.to_string()); if (meetsDifficulty(h)) { set found } localNonce += threadCount; }
+ per-thread: localNonce = base + tid; while (!found) { hdr.set_nonce(localNonce); h = HashFunkcija(hdr.to_string()); if (meetsDifficulty(h)) { set found } localNonce += threadCount; }
 ```
 
-Šie fragmentai yra tiesioginiai atitikmenys `main.cpp` kode ir gali būti nukopijuoti/naudojami kaip dokumentacijos pavyzdžiai ar testų bazė.
-
 ## Išsamūs klasės ir funkcijų aprašymai
-Žemiau pateikiami išsamūs aprašymai visoms reikšmingoms klasėms ir pagalbinėms funkcijoms, kurios yra `main.cpp`. Kiekvienam objektui nurodau laukus, pagrindinius metodus, atsakomybes ir pastebėjimus/edge-case'us.
+
+Žemiau pateikiami išsamūs aprašymai visoms reikšmingoms klasėms ir pagalbinėms funkcijoms, kurios yra `main.cpp`. Kiekvienam objektui nurodau laukus, pagrindinius metodus.
 
 - HashFunkcija(std::string tekstas)
   - Tipas: funkcija
@@ -161,7 +152,6 @@ bool UTXOPool::remove(const string& txid, uint32_t index) {
   - Laukai: `vector<Transaction> pending_`, RNG
   - Metodai: `push(Transaction)`, `take(maxCount)`, `size()`
   - Paskirtis: laikyti laukiantį mempool; `take` paima atsitiktinį rinkinį transakcijų (šio projekto paprasta strategija)
-  - Edge cases: `take` naudoja swap-pop element removal, todėl neveikia kaip FIFO; tai supaprastinta priemonė demonstracijai.
 
 - BlockHeader
   - Tipas: klasė
@@ -193,10 +183,13 @@ bool UTXOPool::remove(const string& txid, uint32_t index) {
   - `starts_with_zeros(hexHash, zeros)` — patikrina ar heksadekadinis stringas prasideda `zeros` nuliais; naudojama difficulty patikrai.
   - `nowSec()` — grąžina dabartinį laiką sekundėmis (naudojama timestampams transakcijoms/blokams).
 
-Kodo ir atsakomybės susiejimas: ši dokumentacija turėtų leisti greitai rasti atitinkamą klasę `main.cpp` ir suprasti jos atsakomybę bei apribojimus. Jei norėtumėte, galiu papildyti kiekvieną klasę trumpu UML stiliaus pavyzdžiu arba pridėti mažus vienetinius testus, kurie demonstruoja klasių elgseną.
 
-## Diagramos ir kur jas įterpti
-Aš pridėjau paprastas SVG diagramas į `assets/`:
+## Diagramos
+Paprastos SVG diagramos
+![Klasės diagrama](assets/class-diagram.svg)
+
+## Diagramos
+Paprastos SVG diagramos
 - `assets/class-diagram.svg` — klasės ryšiai (User, Transaction, Block, UTXOPool, Miner)
 - `assets/utxo-model.svg` — UTXO srautas: tx inputs -> UTXOPool -> balance
 - `assets/mining-flow.svg` — kasimo žingsniai (gather tx -> build candidate -> PoW -> apply)
@@ -211,8 +204,6 @@ Aš pridėjau paprastas SVG diagramas į `assets/`:
 ![Merkle tree](assets/merkle-tree.svg)
 ```
 
-Vieta pakeitimams: jei norite, galiu pakeisti šias SVG diagramas (pagerinti dizainą arba eksportuoti PNG).
-
 ## UTXO modelis — kaip jis įgyvendintas main.cpp ir pagrindiniai trūkumai
 
 Kaip įgyvendinta
@@ -220,19 +211,19 @@ Kaip įgyvendinta
 - Transakcijų generavimo dalyje (`generateTransactions`) dažniausiai kuriamos vieno-input transakcijos (paimamas vienas atsitiktinis UTXO, dalis siunčiama kitam vartotojui, likutis — change atgal siuntėjui).
 - `Blockchain::addBlock` patikrina, ar visi inputs egzistuoja `UTXOPool` ir ar sumos sutampa, tada pašalina panaudotus UTXO ir prideda naujus outputs.
 
+3) UTXOPool pagrindinės operacijos (add/get/remove)
+![UTXO modelis](assets/utxo-model.svg)
+
 Pagrindiniai trūkumai / apribojimai (ką reikėtų žinoti)
+Trūkumai / apribojimai
+
+![Mining flow](assets/mining-flow.svg)
+![Parallel mining](assets/parallel-mining.svg)
+
+- Nėra dinaminio difficulty reguliavimo: difficulty yra fiksuotas per vykdymą, nėra automatinio pritaikymo prie kasybos greičio.
 - Signatūros nėra taikomos: `TxInput.signature` laukas egzistuoja, bet transakcijos generavimo metu jis paliekamas tuščias — nėra kriptografinės parašų validacijos. Tai reiškia, kad nėra tikros autentifikacijos, kas gali vykdyti transakcijas.
-- Paprasta transakcijų generacija: `generateTransactions` dažniausiai naudoja vieno-input modelį, todėl sudėtingesni scenarijai (daugelio inputs, fee prioritizacija) nėra atvaizduoti.
 - Mempool / fee politika: nėra transakcijų mokesčių prioritetų — blokams atrenkamos transakcijos atsitiktinai iš pool, todėl nėra realistiškos rinkos-dinamikos.
 - Neišsaugojimas / neperdavimo galimybės: UTXO pool nėra serializuojamas / išsaugomas į diską — nėra persistencijos ar checkpoint'ų.
-- Prieigos kontrolė / privatumas: viešieji raktai yra simple strings; nėra adresų formatų, anonimizacijos ar CoinJoin tipo užmaskavimo.
-- Skalavimas / dideli duomenys: paprastas `unordered_map` gali veikti, bet nėra optimizacijų (pruning, indexai, archyvavimas), todėl didesnėmis apkrovomis gali kilti atminties / našumo problemų.
-- Double-spend mitigacija ribota: blokų lygmenyje tikrinama, o mempoole nėra sudėtingesnės konfliktų tvarkymo logikos (pvz. replacement-by-fee ar chain reorg handling).
-
-Jei norite, galiu:
-- pridėti paprastą parašo stub'ą ir parašų tikrinimą (simuliuoti ECDSA) arba integruoti libs kaip `openssl`/`libsodium`,
-- pridėti fee lauką ir prioritizaciją `TxPool::take`,
-- įdiegti UTXO persistenciją į failą (JSON) arba paprastą DB.
 
 ## Kasybos (mining) — trūkumai / apribojimai implementacijoje
 
@@ -241,18 +232,11 @@ Kaip įgyvendinta
 - `Miner` turi viengiją ir paprastą dauggijų (`tryMineParallel`) implementaciją: gijos iteruoja per nonce reikšmes su žingsniu lygų `threadCount`.
 
 Trūkumai / apribojimai
-- Custom `HashFunkcija` nėra kriptografiškai patikima: ji tinkama edukaciniams tikslams, bet nėra saugi realiam PoW (neatitinka kriptografinio preimage-resistance, avalanche, ir pan.).
-- Difficulty matuojama pagal heksadekadinių simbolių pradines '0' reikšmes — tai paprasta, bet prastai atspindi tikslų bitų tikslumą ir gali sukelti netolygų grūdėjimą.
-- Lygiagretumo paprastumas: `tryMineParallel` dalija nonce'ą tarp gijų, bet nėra atliktas darbų paskirstymas ar efektyvus load-balancing (pvz. work-stealing), todėl norint geresnio našumo reikėtų patobulinimų.
+
 - Nėra dinaminio difficulty reguliavimo: difficulty yra fiksuotas per vykdymą, nėra automatinio pritaikymo prie kasybos greičio.
 - Nėra tinklo konsensuso / reorg handling: programa yra centralizuota vienoje instancijoje, nėra mechanizmo spręsti konflikto situacijas tarp kelių node'ų ar šakėms.
 - Blokų atmetimas / orphan handling nėra simuliuotas: nėra mechanizmo valdyti atskirų mined blokų konflikto tarp kelių mazgų.
-- Našumo optimizacijos trūksta: hash inner-loop nėra optimizuotas (pvz. keletas lygiagrečių mažų optimizacijų), nėra GPU paruošimo.
 
-Jeigu pageidaujate, galiu:
-- pakeisti `HashFunkcija` į realią SHA-256 (naudojant `openssl` arba platformos libs) ir parodyti skirtumus,
-- pridėti dynamic difficulty reguliavimo pavyzdį,
-- parašyti patobulintą `tryMineParallel` su geresniu paskirstymu ir mesti testą su profiliavimu.
 
 ## Kur įdėti paveikslėlius (rekomenduojami failai ir vietos README)
 Rekomenduoju sukurti aplanką `assets/` arba `docs/images/` ir dėti paveikslėlius ten. Žemiau — pasiūlymai, kokius paveikslėlius padaryti ir kur juos įterpti README:
