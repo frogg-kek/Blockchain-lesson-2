@@ -184,8 +184,6 @@ bool UTXOPool::remove(const string& txid, uint32_t index) {
   - `nowSec()` — grąžina dabartinį laiką sekundėmis (naudojama timestampams transakcijoms/blokams).
 
 
-## Diagramos
-Paprastos SVG diagramos
 ![Klasės diagrama](assets/class-diagram.svg)
 
 ## Diagramos
