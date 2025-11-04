@@ -186,22 +186,6 @@ bool UTXOPool::remove(const string& txid, uint32_t index) {
 
 ![Klasės diagrama](assets/class-diagram.svg)
 
-## Diagramos
-Paprastos SVG diagramos
-- `assets/class-diagram.svg` — klasės ryšiai (User, Transaction, Block, UTXOPool, Miner)
-- `assets/utxo-model.svg` — UTXO srautas: tx inputs -> UTXOPool -> balance
-- `assets/mining-flow.svg` — kasimo žingsniai (gather tx -> build candidate -> PoW -> apply)
-- `assets/parallel-mining.svg` — paprasta gijų/nonce paskirstymo schema
-- `assets/merkle-tree.svg` — pavyzdinis Merkle medžio vaizdas (3 lapai, paskutinis dubliuojamas)
-
-Įterpimo pavyzdžiai:
-
-```markdown
-![Klasės diagrama](assets/class-diagram.svg)
-![UTXO modelis](assets/utxo-model.svg)
-![Merkle tree](assets/merkle-tree.svg)
-```
-
 ## UTXO modelis — kaip jis įgyvendintas main.cpp ir pagrindiniai trūkumai
 
 Kaip įgyvendinta
