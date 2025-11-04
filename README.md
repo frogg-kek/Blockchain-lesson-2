@@ -208,7 +208,6 @@ Kaip įgyvendinta
 - `Miner` turi viengiją ir paprastą dauggijų (`tryMineParallel`) implementaciją: gijos iteruoja per nonce reikšmes su žingsniu lygų `threadCount`.
 
 ![Mining flow](assets/mining-flow.svg)
-![Parallel mining](assets/parallel-mining.svg)
 
 Trūkumai / apribojimai
 
