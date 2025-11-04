@@ -207,7 +207,7 @@ Kaip įgyvendinta
 - `main.cpp` naudoja PoW (Proof-of-Work) modelį: bloko hash'as apskaičiuojamas kaip `HashFunkcija(block.header().to_string())`, o galiojimas tikrinamas per `starts_with_zeros(h, difficulty)` (ieškoma tam tikro skaičiaus pirmųjų '0' simbolių heksadinėje eilutėje).
 - `Miner` turi viengiją ir paprastą dauggijų (`tryMineParallel`) implementaciją: gijos iteruoja per nonce reikšmes su žingsniu lygų `threadCount`.
 
-![Mining flow](assets/mining-flow.svg)
+![alt text](assets/parallel-mining.svg)
 
 Trūkumai / apribojimai
 
@@ -260,64 +260,6 @@ Rekomenduojami flag'ai (projekto CLI):
 - `--threads <n>` — maksimalus gijų skaičius paraleliam kasimui.
 - `--help` — atspausdinti pagalbą.
 
-Minimalus C++ pavyzdys (rankinis argv parsing, įdėti į `main()`):
-
-```cpp
-int main(int argc, char** argv) {
-  int difficulty = 3;
-  int users = 10;
-  int tx = 100;
-  int tpb = 10;
-  int maxBlocks = -1;
-  int threads = 4;
-
-  for (int i = 1; i < argc; ++i) {
-    std::string a = argv[i];
-    if (a == "--difficulty" && i + 1 < argc) difficulty = std::stoi(argv[++i]);
-    else if (a == "--users" && i + 1 < argc) users = std::stoi(argv[++i]);
-    else if (a == "--tx" && i + 1 < argc) tx = std::stoi(argv[++i]);
-    else if (a == "--tpb" && i + 1 < argc) tpb = std::stoi(argv[++i]);
-    else if (a == "--max-blocks" && i + 1 < argc) maxBlocks = std::stoi(argv[++i]);
-    else if (a == "--threads" && i + 1 < argc) threads = std::stoi(argv[++i]);
-    else if (a == "--help") {
-      std::cout << "Usage: blockchain.exe [--difficulty N] [--users N] ...\n";
-      return 0;
-    }
-  }
-
-  // toliau perduoti reikšmes į programos objektus (Miner, Blockchain, generatorius)
-}
-```
-
-Alternatyva: naudoti biblioteką („robust & feature-rich") kaip `boost::program_options` arba `cxxopts` — jos palengvina validaciją, pagalbos tekstą ir numatytų reikšmių valdymą.
-
-Pavyzdys su `cxxopts` (mažas fragmentas):
-
-```cpp
-#include <cxxopts.hpp>
-int main(int argc, char** argv) {
-  cxxopts::Options options("blockchain", "Supaprastinta blockchain simuliacija");
-  options.add_options()
-    ("difficulty", "PoW difficulty", cxxopts::value<int>()->default_value("3"))
-    ("users", "Users count", cxxopts::value<int>()->default_value("10"))
-    ("threads", "Miner threads", cxxopts::value<int>()->default_value("4"))
-    ("help", "Print help");
-
-  auto result = options.parse(argc, argv);
-  if (result.count("help")) { std::cout << options.help() << std::endl; return 0; }
-  int difficulty = result["difficulty"].as<int>();
-  int users = result["users"].as<int>();
-  int threads = result["threads"].as<int>();
-}
-```
-
-Kokį flag'o poveikį reikėtų įgyvendinti kode:
-- `difficulty` → perduoti `Blockchain` / `Miner` klasėms (kaip pradinė arba nuolatinė reikšmė).
-- `threads` → perduoti `Miner::tryMineParallel` (ar konfigūruoti globalų thread pool).
-- `tpb`, `tx`, `users`, `max-blocks` → generavimo parametrams ir valdymo ciklui.
-
-Patarimas: patikrinkite CLI reikšmes anksti programos starto metu ir log'inkite jas (pvz. `Logger::info(...)`), kad eksperimentų reproducibility būtų aišku.
-
 ## AI įrankio naudojimas ir ką jis pasiūlė (apibendrinimas)
 
 Šiame projekte buvo naudotas AI kaip pagalbinė priemonė architektūros pasiūlymams, kodo realizavimui, nes kartais galvoje veinas dalykas, o kode gaunasi kitas. Žemiau trumpai aprašau, kur AI padėjo ir kokius kodo tobulinimo pasiūlymus galima įgyvendinti.
@@ -339,10 +281,6 @@ Rekomenduojami kodo tobulinimai (AI pasiūlymai, kurie būtų naudingi implement
   - Apsvarstyti dynamic range partitioning arba per-blok nonce base randomizaciją, kad gijos neperliptų vienos kitos darbo.
   - Užtikrinti deterministic logging / per-gijų rezultato sutvarkymą (kas tas, kuris pritaiko bloką ir atšaukia kitus rezultatų bandymus).
 
-- Paaiškinimų / demo gerinimas:
-  - Pridėti Merkle proof pavyzdį ir funkciją `Block::getMerkleProof(txId)` bei `verifyMerkleProof`.
-  - Parašyti trumpus unit testus (Catch2) — bloko validacijos testas, tx apply testas.
 
-- Flag'ų realizacija kode (praktiniai patarimai):
-  - Naudoti `cxxopts` arba `boost::program_options` projekto CLI valdymui; tai supaprastina validaciją ir help teksto generavimą.
-  - Centralizuoti konfigūraciją (`struct Config { int difficulty; int threads; ... };`) ir perduoti tą struktūrą visiems pagrindiniams komponentams (Miner, Blockchain, generators).
+
+
