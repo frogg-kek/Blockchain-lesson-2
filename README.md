@@ -132,7 +132,7 @@ bool UTXOPool::remove(const string& txid, uint32_t index) {
   - Vieši metodai: konstruktorius, `getId()`, `getTimestamp()`, `getInputs()`, `getOutputs()`, `serialiseCanonical()`, `computeId()`, `verifyId()`
   - Paskirtis: modeliuoti transakciją UTXO modelyje.
   - Svarbu: `serialiseCanonical()` ir `computeId()` užtikrina, kad `id_` yra deterministinis ir gali būti patikrintas su `verifyId()`.
-  - Edge cases: jei inputs ar outputs tušti, serializacija vis tiek generuoja deterministinį stringą; `verifyId()` būtinas, kai taikote tx į UTXOPool.
+  - Edge cases: jei inputs ar outputs tušti, serializacija vis tiek generuoja deterministinį stringą; `verifyId()` būtinas, kai taikome tx į UTXOPool.
 
 - UTXOPool
   - Tipas: klasė (paprasta UTXO saugykla)
@@ -151,7 +151,7 @@ bool UTXOPool::remove(const string& txid, uint32_t index) {
   - Tipas: klasė
   - Laukai: `vector<Transaction> pending_`, RNG
   - Metodai: `push(Transaction)`, `take(maxCount)`, `size()`
-  - Paskirtis: laikyti laukiantį mempool; `take` paima atsitiktinį rinkinį transakcijų (šio projekto paprasta strategija)
+  - Paskirtis: laikyti laukiantį mempool; `take` paima atsitiktinį rinkinį transakcijų
 
 - BlockHeader
   - Tipas: klasė
