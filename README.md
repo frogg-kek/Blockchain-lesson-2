@@ -211,7 +211,7 @@ Kaip įgyvendinta
 
 ![UTXO modelis](assets/utxo-model.svg)
 
-Pagrindiniai trūkumai / apribojimai (ką reikėtų žinoti)
+Pagrindiniai trūkumai / apribojimai
 
 - Signatūros nėra taikomos: `TxInput.signature` laukas egzistuoja, bet transakcijos generavimo metu jis paliekamas tuščias — nėra kriptografinės parašų validacijos. Tai reiškia, kad nėra tikros autentifikacijos, kas gali vykdyti transakcijas.
 - Mempool / fee politika: nėra transakcijų mokesčių prioritetų — blokams atrenkamos transakcijos atsitiktinai iš pool, todėl nėra realistiškos rinkos-dinamikos.
@@ -232,31 +232,6 @@ Trūkumai / apribojimai
 - Nėra tinklo konsensuso / reorg handling: programa yra centralizuota vienoje instancijoje, nėra mechanizmo spręsti konflikto situacijas tarp kelių node'ų ar šakėms.
 - Blokų atmetimas / orphan handling nėra simuliuotas: nėra mechanizmo valdyti atskirų mined blokų konflikto tarp kelių mazgų.
 
-
-## Kur įdėti paveikslėlius (rekomenduojami failai ir vietos README)
-Rekomenduoju sukurti aplanką `assets/` arba `docs/images/` ir dėti paveikslėlius ten. Žemiau — pasiūlymai, kokius paveikslėlius padaryti ir kur juos įterpti README:
-
-- assets/class-diagram.png — klasės diagrama (User, Transaction, BlockHeader, Block, Blockchain). Įterpti po "Klasės" skyriaus.
-  - Markdown: `![Klasės diagrama](assets/class-diagram.png)`
-
-- assets/utxo-model.png — UTXO schema: kaip veikia inputs -> outputs, UTXOSet. Įterpti po UTXO skyriaus.
-  - Caption: "UTXO rinkinys ir transakcijų srautas (inputs -> outputs)"
-
-- assets/mining-flow.png — srautografas, kaip vyksta bloko sudarymas ir kasimas (1..7 žingsniai). Įterpti po "Kasybos logika".
-
-- assets/parallel-mining.png — diagramėlė su keliomis gijomis, bendru header'u ir atomic flag'u. Įterpti po "Lygiagretus kasymas".
-
-- assets/merkle-tree.png — (neprivaloma) Merkle medžio iliustracija, jei ketinate pridėti Merkle root. Įterpti prie transakcijų hash skyriaus.
-
-Inclusion example (Markdown fragment):
-
-```markdown
-## Klasės
-...aprašymas...
-![Klasės diagrama](assets/class-diagram.png)
-```
-
-Visada rašykite trumpą alt tekstą/ caption, kad būtų aišku, ką vaizduoja diagrama.
 
 ## Kaip sukompiliuoti ir paleisti (Windows PowerShell)
 1) Reikalavimai:
@@ -283,36 +258,9 @@ Jei naudojate MinGW, galite gauti `blockchain.exe`.
 .\blockchain.exe --difficulty 3 --users 100 --tx 500 --tpb 50 --max-blocks 5
 ```
 
-Pastaba: jei neturite `g++` Windows sistemoje, galite:
-- Įdiegti MinGW-w64 arba MSYS2
-- Naudoti WSL (Windows Subsystem for Linux) ir ten kompiliuoti
-
-## Dažniausi klaidų šaltiniai ir sprendimai
-- Jei kompiliacija nepavyksta: patikrinkite, ar failas `main.cpp` yra projekto šaknyje (šalia README), ar turite g++ PATH.
-- Jei vykdymo metu programa greitai baigiasi: pradžioje tikrinkite CLI parametrus (`--max-blocks -1` ar pan.).
-
 ## Greitas pavyzdys: kasimo eiga (ką matysite konsolėje)
 - "Mining block #1, nonce=..." — spaudžiama informacija apie nonce bandymus
 - "FOUND block hash=... nonce=..." — rastas galiojantis hash
 - "APPLIED tx X" / "SKIPPED tx Y" — ar transakcija buvo pritaikyta bloko metu
 
-## Ką galima pridėti po to (proaktyvūs plėtiniai)
-- Implementuoti UTXOSet ir pakeisti transakcijų modelį
-- Pridėti Merkle root + proof of inclusion pavyzdžius
-- Padaryti paprastą P2P sinchronizaciją tarp kelių instancijų
-- Parašyti trumpą unit test rinkinį (C++ Catch2 arba GoogleTest) su 2 testais: bloko validacija ir tx taikymas
-
-## Vieta paveikslėliams (santrauka)
-- `assets/class-diagram.png` — po skyriumi "Klasės"
-- `assets/utxo-model.png` — po skyriumi "UTXO modelis"
-- `assets/mining-flow.png` — po skyriumi "Kasybos logika"
-- `assets/parallel-mining.png` — po skyriumi "Lygiagretus kasymas"
-
 ---
-
-Jeigu pageidaujate, galiu:
-- paruošti paprastą SVG klasės diagramą ir UTXO schemą,
-- įterpti diagramas tiesiai į `assets/` ir atnaujinti README su nuorodomis,
-- parašyti minimalų `Miner` klasės pavyzdį su std::thread implementacija.
-
-Tolimesni žingsniai aš atlieku: atnaujinsiu README (padaryta) ir pabandysiu sukompiliuoti projektą, kad patikrinčiau, ar kompiliacijos komanda tinka jūsų aplinkai.
