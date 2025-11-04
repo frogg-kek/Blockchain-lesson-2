@@ -209,16 +209,10 @@ Kaip įgyvendinta
 - Transakcijų generavimo dalyje (`generateTransactions`) dažniausiai kuriamos vieno-input transakcijos (paimamas vienas atsitiktinis UTXO, dalis siunčiama kitam vartotojui, likutis — change atgal siuntėjui).
 - `Blockchain::addBlock` patikrina, ar visi inputs egzistuoja `UTXOPool` ir ar sumos sutampa, tada pašalina panaudotus UTXO ir prideda naujus outputs.
 
-3) UTXOPool pagrindinės operacijos (add/get/remove)
 ![UTXO modelis](assets/utxo-model.svg)
 
 Pagrindiniai trūkumai / apribojimai (ką reikėtų žinoti)
-Trūkumai / apribojimai
 
-![Mining flow](assets/mining-flow.svg)
-![Parallel mining](assets/parallel-mining.svg)
-
-- Nėra dinaminio difficulty reguliavimo: difficulty yra fiksuotas per vykdymą, nėra automatinio pritaikymo prie kasybos greičio.
 - Signatūros nėra taikomos: `TxInput.signature` laukas egzistuoja, bet transakcijos generavimo metu jis paliekamas tuščias — nėra kriptografinės parašų validacijos. Tai reiškia, kad nėra tikros autentifikacijos, kas gali vykdyti transakcijas.
 - Mempool / fee politika: nėra transakcijų mokesčių prioritetų — blokams atrenkamos transakcijos atsitiktinai iš pool, todėl nėra realistiškos rinkos-dinamikos.
 - Neišsaugojimas / neperdavimo galimybės: UTXO pool nėra serializuojamas / išsaugomas į diską — nėra persistencijos ar checkpoint'ų.
@@ -228,6 +222,9 @@ Trūkumai / apribojimai
 Kaip įgyvendinta
 - `main.cpp` naudoja PoW (Proof-of-Work) modelį: bloko hash'as apskaičiuojamas kaip `HashFunkcija(block.header().to_string())`, o galiojimas tikrinamas per `starts_with_zeros(h, difficulty)` (ieškoma tam tikro skaičiaus pirmųjų '0' simbolių heksadinėje eilutėje).
 - `Miner` turi viengiją ir paprastą dauggijų (`tryMineParallel`) implementaciją: gijos iteruoja per nonce reikšmes su žingsniu lygų `threadCount`.
+
+![Mining flow](assets/mining-flow.svg)
+![Parallel mining](assets/parallel-mining.svg)
 
 Trūkumai / apribojimai
 
