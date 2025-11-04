@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="800" height="300">
+  <style> .box { fill:#f6f8fa; stroke:#333; stroke-width:1.2 } .title{ font: bold 14px sans-serif } .txt{ font: 12px sans-serif } </style>
+  <rect x="20" y="20" width="200" height="70" class="box"/>
+  <text x="30" y="40" class="title">User</text>
+  <text x="30" y="60" class="txt">name, publicKey, balance</text>
+
+  <rect x="260" y="20" width="220" height="90" class="box"/>
+  <text x="270" y="40" class="title">Transaction</text>
+  <text x="270" y="60" class="txt">inputs[], outputs[], id, timestamp</text>
+
+  <rect x="520" y="20" width="220" height="70" class="box"/>
+  <text x="530" y="40" class="title">Block / BlockHeader</text>
+  <text x="530" y="60" class="txt">prev_hash, tx_hash, nonce, difficulty</text>
+
+  <rect x="260" y="140" width="220" height="60" class="box"/>
+  <text x="270" y="160" class="title">UTXOPool</text>
+  <text x="270" y="180" class="txt">add/get/remove, key(txid:index)</text>
+
+  <rect x="520" y="140" width="220" height="60" class="box"/>
+  <text x="530" y="160" class="title">Miner / Blockchain</text>
+  <text x="530" y="180" class="txt">makeCandidate, tryMineParallel, addBlock</text>
+
+  <defs>
+    <marker id="arrow" markerWidth="10" markerHeight="7" refX="10" refY="3.5" orient="auto">
+      <path d="M0,0 L10,3.5 L0,7 z" fill="#333" />
+    </marker>
+  </defs>
+
+  <line x1="220" y1="55" x2="260" y2="55" stroke="#333" marker-end="url(#arrow)" />
+  <line x1="380" y1="110" x2="380" y2="140" stroke="#333" marker-end="url(#arrow)" />
+  <line x1="480" y1="55" x2="520" y2="55" stroke="#333" marker-end="url(#arrow)" />
+</svg>

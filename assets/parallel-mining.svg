@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="700" height="260">
+  <style> .box{fill:#fff0f5;stroke:#333} .txt{font:12px sans-serif} .title{font:bold 13px sans-serif} </style>
+  <text x="20" y="30" class="title">Parallel mining: threads share header, search different nonces</text>
+  <rect x="20" y="50" width="660" height="40" class="box"/>
+  <text x="30" y="78" class="txt">Shared BlockHeader (prev_hash, tx_hash, difficulty)</text>
+
+  <rect x="40" y="110" width="160" height="40" class="box"/>
+  <text x="50" y="135" class="txt">Thread 0: nonce 0, step N</text>
+  <rect x="240" y="110" width="160" height="40" class="box"/>
+  <text x="250" y="135" class="txt">Thread 1: nonce 1, step N</text>
+  <rect x="440" y="110" width="160" height="40" class="box"/>
+  <text x="450" y="135" class="txt">Thread 2: nonce 2, step N</text>
+
+  <defs>
+    <marker id="arrow" markerWidth="10" markerHeight="7" refX="10" refY="3.5" orient="auto">
+      <path d="M0,0 L10,3.5 L0,7 z" fill="#333" />
+    </marker>
+  </defs>
+
+  <line x1="120" y1="150" x2="120" y2="200" stroke="#333" marker-end="url(#arrow)" />
+  <line x1="320" y1="150" x2="320" y2="200" stroke="#333" marker-end="url(#arrow)" />
+  <line x1="520" y1="150" x2="520" y2="200" stroke="#333" marker-end="url(#arrow)" />
+
+  <text x="30" y="220" class="txt">Atomic flag signals found nonce; winner sets header.nonce and block hash</text>
+</svg>

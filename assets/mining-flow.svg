@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="800" height="260">
+  <style> .box{fill:#e8f8f5;stroke:#333} .txt{font:12px sans-serif} .title{font:bold 13px sans-serif} </style>
+  <rect x="20" y="20" width="200" height="50" class="box"/>
+  <text x="30" y="50" class="title">1. Gather tx (TxPool)</text>
+
+  <rect x="260" y="20" width="220" height="50" class="box"/>
+  <text x="270" y="50" class="title">2. Build block candidate</text>
+
+  <rect x="520" y="20" width="240" height="50" class="box"/>
+  <text x="530" y="50" class="title">3. PoW: iterate nonce</text>
+
+  <rect x="260" y="100" width="220" height="50" class="box"/>
+  <text x="270" y="130" class="title">4. Validate & apply (UTXOPool)</text>
+
+  <defs>
+    <marker id="arrow" markerWidth="10" markerHeight="7" refX="10" refY="3.5" orient="auto">
+      <path d="M0,0 L10,3.5 L0,7 z" fill="#333" />
+    </marker>
+  </defs>
+
+  <line x1="220" y1="45" x2="260" y2="45" stroke="#333" marker-end="url(#arrow)" />
+  <line x1="480" y1="45" x2="520" y2="45" stroke="#333" marker-end="url(#arrow)" />
+  <line x1="380" y1="70" x2="380" y2="100" stroke="#333" marker-end="url(#arrow)" />
+</svg>

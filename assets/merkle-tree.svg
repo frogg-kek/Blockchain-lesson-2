@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="700" height="300">
+  <style> .box{fill:#f0f8ff;stroke:#333} .txt{font:12px sans-serif} .title{font:bold 13px sans-serif} </style>
+  <text x="20" y="24" class="title">Merkle tree example (3 leaves with last duplicated)</text>
+  <rect x="50" y="40" width="120" height="30" class="box"/><text x="60" y="60" class="txt">txA.id</text>
+  <rect x="200" y="40" width="120" height="30" class="box"/><text x="210" y="60" class="txt">txB.id</text>
+  <rect x="350" y="40" width="120" height="30" class="box"/><text x="360" y="60" class="txt">txC.id</text>
+  <rect x="500" y="40" width="120" height="30" class="box"/><text x="510" y="60" class="txt">txC.id (dup)</text>
+
+  <rect x="125" y="110" width="160" height="30" class="box"/><text x="135" y="130" class="txt">hAB = Hash(txA+txB)</text>
+  <rect x="375" y="110" width="160" height="30" class="box"/><text x="385" y="130" class="txt">hCC = Hash(txC+txC)</text>
+
+  <rect x="250" y="190" width="200" height="30" class="box"/><text x="260" y="210" class="txt">root = Hash(hAB+hCC)</text>
+
+  <line x1="110" y1="70" x2="125" y2="110" stroke="#333" />
+  <line x1="260" y1="70" x2="260" y2="110" stroke="#333" />
+  <line x1="410" y1="70" x2="375" y2="110" stroke="#333" />
+  <line x1="560" y1="70" x2="435" y2="110" stroke="#333" />
+
+  <line x1="205" y1="140" x2="250" y2="190" stroke="#333" />
+  <line x1="435" y1="140" x2="400" y2="190" stroke="#333" />
+</svg>
