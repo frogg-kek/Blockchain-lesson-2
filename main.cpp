@@ -180,6 +180,14 @@ public:
         id_ = HashFunkcija(serialiseCanonical());
     }
 
+    // Beginner-friendly verification: recompute the canonical serialization
+    // and check it equals the stored id. Use this to detect tampered or
+    // malformed transactions before applying them to the UTXO set.
+    bool verifyId() const {
+        // Recompute hash from the canonical serialization and compare.
+        return id_ == HashFunkcija(serialiseCanonical());
+    }
+
 private:
     string id_;
     uint64_t timestamp_{0};
@@ -656,6 +664,14 @@ public:
         unordered_set<string> spentInBlock;
 
         for (const auto& tx : block.transactions()) {
+            // Verify the transaction's id matches its canonical serialization.
+            // This prevents applying transactions that have been tampered with
+            // or were constructed incorrectly.
+            if (!tx.verifyId()) {
+                ++skipped;
+                cout << "   TX " << tx.getId().substr(0,10) << "... INVALID ID - skipped\n";
+                continue;
+            }
             // coinbase (no inputs)
             if (tx.getInputs().empty()) {
                 // add outputs as new UTXOs
