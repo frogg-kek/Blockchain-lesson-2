@@ -180,11 +180,11 @@ public:
         id_ = HashFunkcija(serialiseCanonical());
     }
 
-    // Beginner-friendly verification: recompute the canonical serialization
-    // and check it equals the stored id. Use this to detect tampered or
-    // malformed transactions before applying them to the UTXO set.
+    // Vartotojui draugiška patikra: perskaičiuoja kanoninę serializaciją
+    // ir patikrina ar sutampa su saugomu id. Naudokite tai aptikti pakeistoms
+    // arba neteisingoms transakcijoms prieš pritaikant jas prie UTXO rinkinio.
     bool verifyId() const {
-        // Recompute hash from the canonical serialization and compare.
+    // Perskaičiuoja maišą iš kanoninės serializacijos ir palygina.
         return id_ == HashFunkcija(serialiseCanonical());
     }
 
@@ -196,7 +196,7 @@ private:
 
 };
 
-// Простая UTXO saugykla
+// Paprasta UTXO saugykla
 class UTXOPool {
 public:
     void add(const string& txid, uint32_t index, const TxOutput& out) {
@@ -217,19 +217,19 @@ public:
         return map_.erase(key(txid, index)) > 0;
     }
 
-    // Return all keys (txid:index) currently in pool
+    // Grąžina visas raktų poras (txid:index), esančias pool'e
     vector<string> listKeys() const {
         vector<string> out; out.reserve(map_.size());
         for (auto& kv : map_) out.push_back(kv.first);
         return out;
     }
 
-    // helper to parse key
+    // pagalbinė funkcija raktui parsinti
     static string key(const string& txid, uint32_t index) {
         return txid + ":" + to_string(index);
     }
 
-    // parse key into txid and index
+    // išskaido raktą į txid ir index
     static bool parseKey(const string& k, string& txid, uint32_t& index) {
         auto p = k.find(':');
         if (p == string::npos) return false;
@@ -244,16 +244,16 @@ private:
 
 class UserManager {
 public:
-    // main deklracija, tai kad NEPASIMEST SITA user ten kintamasis 
+    // Pagrindinė deklaracija: saugoti vartotojus ir jų balansus
     void generateUsers(size_t nUsers) {
-        // Sukuriame atsitiktinius pradinius balansus pagal reikalavimuus
+    // Sukuriame atsitiktinius pradinius balansus pagal reikalavimus
         uniform_int_distribution<long long> bal(100, 1000000);
         for (size_t i = 0; i < nUsers; ++i) {
             string name = randomName();
             string pk   = randomPublicKey();
             users_.emplace(pk, User{name, pk, bal(rng_)});
         }
-        cout << "Sugeneruota vartotojų: " << users_.size() << "\n";
+        cout << "Sugeneruota vartotoju: " << users_.size() << "\n";
     }
 
     bool withdraw(const string& pk, long long amt) {
@@ -300,7 +300,7 @@ class TxPool {
 public:
     void push(Transaction tx) { pending_.push_back(std::move(tx)); }
 
-    // main deklaracija nepamentimui naudojat txcount
+    // Pagrindinė deklaracija: tvarkyti laukiančių transakcijų skaičių
     vector<Transaction> take(size_t maxCount) {
         size_t takeN = std::min(maxCount, pending_.size());
         vector<Transaction> out; out.reserve(takeN);
@@ -310,7 +310,7 @@ public:
             uniform_int_distribution<size_t> dist(0, pending_.size() - 1);
             size_t idx = dist(rng_);
             out.push_back(std::move(pending_[idx]));
-            // pašaliname elementą
+            // pašaliname elementą (swap-pop)
             if (idx != pending_.size() - 1) pending_[idx] = std::move(pending_.back());
             pending_.pop_back();
         }
@@ -325,8 +325,8 @@ private:
 
 // Funkcija, kuri sugeneruoja nTx atsitiktinių UTXO transakcijų ir įdeda jas į pool.
 // - `allKeys` yra vartotojų vieši raktai (iš UserManager::keys())
-// - Imame atsitiktinį UTXO (iš utxoPool), suformuojame vieno-input transakciją
-// - Iš each UTXO sukuriame tx: siunčiame dalį gavėjui ir grąža lieka siuntėjui
+// - Paimamas atsitiktinis UTXO (iš utxoPool), suformuojama vieno-input transakcija
+// - Iš kiekvieno UTXO sukuriama tx: siunčiame dalį gavėjui, o grąža lieka siuntėjui
 static void generateTransactions(TxPool& pool, const vector<string>& allKeys, const UTXOPool& utxoPool, size_t nTx, mt19937_64& rng) {
     if (allKeys.size() < 2) return;
     auto available = utxoPool.listKeys();
@@ -337,10 +337,11 @@ static void generateTransactions(TxPool& pool, const vector<string>& allKeys, co
 
     size_t created = 0;
     while (created < nTx && !available.empty()) {
-        // pick a random available utxo and then remove it from local list to avoid double-using
+    // išsirenkame atsitiktinį prieinamą UTXO ir pašaliname jį iš vietinio sąrašo,
+    // kad nebūtų naudojamas du kartus
         size_t idx = pickAvail(rng) % available.size();
         string key = available[idx];
-        // remove by swap-pop
+    // pašaliname naudojant swap-pop metodą
         if (idx != available.size()-1) available[idx] = available.back();
         available.pop_back();
 
@@ -350,14 +351,14 @@ static void generateTransactions(TxPool& pool, const vector<string>& allKeys, co
         if (!utxoPool.get(prevTxId, outIdx, prevOut)) continue;
 
         const string& sender = prevOut.receiventPubKey;
-        // choose receiver different from sender
+    // parenkame gavėją, skirtingą nuo siuntėjo
         string receiver;
         do { receiver = allKeys[pickKey(rng)]; } while (receiver == sender && allKeys.size() > 1);
 
         uniform_int_distribution<long long> amt(1, prevOut.amount);
         long long sendAmt = amt(rng);
 
-        // build tx: one input, one or two outputs (to receiver and change back to sender)
+    // sudarome transakciją: vienas įėjimas, vienas arba du išėjimai (gavėjui ir grąža siuntėjui)
         TxInput in; in.prevTxId = prevTxId; in.outputIndex = outIdx; in.senderPubKey = sender; in.signature = "";
         vector<TxInput> inputs{in};
         vector<TxOutput> outputs;
@@ -429,11 +430,11 @@ public:
     void set_block_hash(string h) { block_hash_ = std::move(h); }
 
     // computeTransactionsHash apskaičiuoja Merkle root iš transakcijų ID.
-    // Trumpai:
+    // Santrauka:
     // 1) Kiekviena transakcija yra lapas (naudojame tx.getId())
-    // 2) Jei sluoksnyje yra nelyginis skaičius lapų, paskutinį dubliuojame
-    // 3) Kiekviena pora lapų sujungiama (concatenate) ir maišoma -> sukuria tėvą
-    // 4) Kartojame iki vieno root
+    // 2) Jei sluoksnyje yra nelyginis lapų skaičius, paskutinį dubliuojame
+    // 3) Kiekviena pora lapų sujungiama (concatenate) ir maišoma — taip sukuriamas tėvas
+    // 4) Kartojame procesą iki vieno root
     static string computeTransactionsHash(const vector<Transaction>& txs) {
         
         if (txs.empty()) return HashFunkcija("");
@@ -475,7 +476,7 @@ public:
     // Miner klasė atvaizduoja vieno kasėjo elgesį:
     // - makeCandidate: sukuria bloko kandidatą (prideda transakcijas, nustato prev_hash ir difficulty)
     // - tryMine: bando rasti nonce su laiko arba bandymų apribojimu
-    // - mine: bloko kasimas be limitų
+    // - mine: bloko kasimas be apribojimų
 
     Block makeCandidate(const string& prevHash, unsigned difficulty, size_t txPerBlock, TxPool& pool) {
         Block b;
@@ -487,8 +488,8 @@ public:
         auto picked = pool.take(txPerBlock);
         b.transactions() = std::move(picked);
 
-    // Prepend a coinbase (miner reward) transaction so miner gets paid if block is accepted
-    vector<TxInput> cbIn; // empty inputs
+    // Pridedame coinbase (kasėjo atlygis) transakciją, kad kasėjas gautų atlygį, jei blokas priimtas
+    vector<TxInput> cbIn; // tušti įėjimai (coinbase)
     vector<TxOutput> cbOuts; cbOuts.push_back(TxOutput{minerPub_, reward_});
     Transaction coinbase(std::move(cbIn), std::move(cbOuts), nowSec());
     b.transactions().insert(b.transactions().begin(), std::move(coinbase));
@@ -523,14 +524,14 @@ public:
         }
     }
 
-    // Beginner-friendly parallel mining: multiple threads search different nonce sequences
-    // Each thread takes a different starting nonce and steps by `threadCount` so they don't
-    // overlap. Threads stop when any thread finds a valid nonce, when timeLimitMs expires,
-    // or when maxAttempts (total across all threads) is reached.
+    // Paprastas paralelinis kasimas: kelios gijos ieško skirtingų nonce sekų
+    // Kiekviena gija pradeda nuo skirtingo nonce ir žengia po `threadCount`, kad
+    // nekristų darbai vienas ant kito. Gijos sustoja, kai kurios randa galiojantį nonce,
+    // pasibaigia timeLimitMs arba pasiekiamas maxAttempts limitas (viso visų gijų).
     bool tryMineParallel(Block& block, uint64_t timeLimitMs, uint64_t maxAttempts, unsigned threadCount) {
         if (threadCount == 0) threadCount = std::thread::hardware_concurrency();
-        if (threadCount == 0) threadCount = 2; // fallback
-        // limit to a small number to keep beginner-friendly behavior
+    if (threadCount == 0) threadCount = 2; // atsarginė reikšmė
+    // apribojame gijų skaičių iki nedidelio, kad elgesys būtų paprastas ir aiškus
         if (threadCount > 8) threadCount = 8;
 
         std::atomic<bool> found{false};
@@ -540,7 +541,7 @@ public:
         std::mutex foundMutex;
 
         auto start = chrono::high_resolution_clock::now();
-        BlockHeader baseHeader = block.header(); // copy so threads won't write shared header
+    BlockHeader baseHeader = block.header(); // kopija, kad gijos nekeistų bendros antraštės
 
         std::vector<std::thread> threads;
         threads.reserve(threadCount);
@@ -549,7 +550,7 @@ public:
             threads.emplace_back([&, tid]() {
                 uint64_t localNonce = baseHeader.getNonce() + tid;
                 uint64_t localAttempts = 0;
-                BlockHeader hdr = baseHeader; // per-thread copy
+                BlockHeader hdr = baseHeader; // vienos gijos kopija antraštei
 
                 while (!found.load(std::memory_order_relaxed)) {
                     if (maxAttempts != 0 && totalAttempts.load(std::memory_order_relaxed) >= maxAttempts) break;
@@ -626,7 +627,7 @@ class Blockchain {
 public:
     explicit Blockchain(unsigned difficulty, unsigned = 100)
     : difficulty_(difficulty) {
-        // Genesis
+    // Genesis (pradinis) blokas
         Block genesis;
         genesis.header().set_prev_hash(string(HASH_DYDIS * 2, '0'));
         genesis.header().set_timestamp(nowSec());
@@ -640,11 +641,12 @@ public:
     const Block& tip() const { return chain_.back(); }
     size_t height() const { return chain_.size() - 1; } // be genesis
 
-    // UTXO-based addBlock: validates inputs exist in UTXO pool, sums, and applies changes to pool
+    // UTXO pagrindu pridedame bloką: validuojame, ar įėjimai egzistuoja UTXO pool'e,
+    // suskaičiuojame sumas ir pritaikome pakeitimus prie pool'o
     void addBlock(const Block& block, UTXOPool& utxos) {
         Logger::info("Pridedame bloka #" + to_string(chain_.size()) + "  tx=" + to_string(block.transactions().size()));
 
-        // basic validations
+    // bazinės validacijos
         if (block.header().getPrev_hash() != tip().block_hash()) {
             Logger::warn("[SKIPPED] blogas prev_hash");
             return;
@@ -660,21 +662,20 @@ public:
 
         size_t applied = 0, skipped = 0, coinbaseCount = 0;
 
-        // track spent outputs within this block to prevent double-spend inside the same block
+    // sekame panaudotus išėjimus šiame bloke, kad išvengtume dvigubo išleidimo bloke
         unordered_set<string> spentInBlock;
 
         for (const auto& tx : block.transactions()) {
-            // Verify the transaction's id matches its canonical serialization.
-            // This prevents applying transactions that have been tampered with
-            // or were constructed incorrectly.
+            // Patikriname, kad transakcijos id atitinka kanoninę serializaciją.
+            // Tai užkerta kelią pritaikyti pakeistas ar neteisingai sukonstruotas transakcijas.
             if (!tx.verifyId()) {
                 ++skipped;
                 cout << "   TX " << tx.getId().substr(0,10) << "... INVALID ID - skipped\n";
                 continue;
             }
-            // coinbase (no inputs)
+            // coinbase (neturi įėjimų)
             if (tx.getInputs().empty()) {
-                // add outputs as new UTXOs
+                // pridedame išėjimus kaip naujus UTXO
                 const auto& outs = tx.getOutputs();
                 for (size_t i = 0; i < outs.size(); ++i) utxos.add(tx.getId(), (uint32_t)i, outs[i]);
                 ++coinbaseCount; ++applied;
@@ -682,7 +683,7 @@ public:
                 continue;
             }
 
-            // validate inputs exist and belong to stated sender
+            // tikriname, ar įėjimai egzistuoja ir priklauso nurodytam siuntėjui
             long long sumIn = 0;
             bool ok = true;
             for (const auto& inp : tx.getInputs()) {
@@ -699,7 +700,7 @@ public:
             for (const auto& o : tx.getOutputs()) sumOut += o.amount;
             if (sumOut > sumIn) { ++skipped; cout << "   TX " << tx.getId().substr(0,10) << "... OUTPUTS > INPUTS - skipped\n"; continue; }
 
-            // apply: remove inputs and mark spent; add outputs as new UTXOs
+            // pritaikymas: pašaliname įėjimus ir pažymime kaip panaudotus; pridedame išėjimus kaip naujus UTXO
             for (const auto& inp : tx.getInputs()) {
                 utxos.remove(inp.prevTxId, inp.outputIndex);
                 spentInBlock.insert(UTXOPool::key(inp.prevTxId, inp.outputIndex));
@@ -712,7 +713,7 @@ public:
 
         chain_.push_back(block);
 
-        // summary
+    // santrauka
         Logger::summary("Block summary");
         cout << "   Applied tx: " << applied << "\n";
         cout << "   Skipped tx: " << skipped << "\n";
@@ -757,19 +758,19 @@ int main(int argc, char** argv) {
     // Moduliai:
     // - UserManager: generuoja vartotojus ir jų balansus
     // - TxPool: laukiančių transakcijų saugykla
-    // - Blockchain: pati grandinė su genesis bloku
-    // - Miner: objektas, kuris bando "kasti" blokus
+    // - Blockchain: pati grandinė su pradiniu (genesis) bloku
+    // - Miner: objektas, kuris bando išgauti (kasti) blokus
     UserManager um;
     um.generateUsers(users); // 1000 
 
     TxPool pool;
     mt19937_64 rng(random_device{}());
-    // Create initial UTXO set from generated users (fund each user with their starting balance)
+    // Sukuriame pradinį UTXO rinkinį iš sugeneruotų vartotojų (finansuojame kiekvieną vartotoją jų pradiniu balansu)
     UTXOPool utxoPool;
     for (const auto& kv : um.all()) {
         const string& pk = kv.first;
         long long bal = kv.second.getBalance();
-        // create a simple funding UTXO per user
+    // sukurti paprastą funding UTXO kiekvienam vartotojui
         string fundId = HashFunkcija(string("FUND:") + pk + ":" + to_string(nowSec()));
         TxOutput o{pk, bal};
         utxoPool.add(fundId, 0, o);
@@ -779,7 +780,7 @@ int main(int argc, char** argv) {
     generateTransactions(pool, keys, utxoPool, txCount, rng);
 
     Blockchain bc(difficulty, txPerBlock);
-    // pick one generated user as miner (so rewards go to a real account)
+    // parenkame vieną sugeneruotą vartotoją kaip kasėją (kad atlygis būtų priskirtas realiam sąskaitai)
     string minerKey = keys.empty() ? string("MINER_PUB") : keys[0];
     Miner miner(difficulty, minerKey, /*reward=*/50);
 
@@ -801,7 +802,7 @@ int main(int argc, char** argv) {
         if (candidates.empty()) break;
 
         // Pradiniai limitai
-        uint64_t timeLimitMs = 5000; // 5 seconds
+    uint64_t timeLimitMs = 5000; // 5000 ms = 5 sekundės
         uint64_t maxAttempts = 5000; // pradinis bandymų limitas
         bool mined = false;
         size_t minedIndex = SIZE_MAX;
@@ -811,14 +812,14 @@ int main(int argc, char** argv) {
         const int maxRounds = 6; // saugiklis
         while (!mined && round < maxRounds) {
             cout << "Pradedame kasimo raunda " << round+1 << ": timeLimit=" << timeLimitMs << " ms, attempts=" << maxAttempts << "\n";
-            // Actual attempts: try each candidate (in parallel per-candidate)
+            // Faktiniai bandymai: bandomas kiekvienas kandidatas (paraleliai per kandidatą)
             unsigned threadsToUse = std::thread::hardware_concurrency();
             if (threadsToUse == 0) threadsToUse = 2;
             // keep small for beginner friendliness
             if (threadsToUse > 4) threadsToUse = 4;
 
             for (size_t i = 0; i < candidates.size(); ++i) {
-                cout << "  Bandome kandidatą #" << i << " (tx=" << candidates[i].transactions().size() << ")\n";
+                cout << "  Bandome kandidata #" << i << " (tx=" << candidates[i].transactions().size() << ")\n";
                 if (miner.tryMineParallel(candidates[i], timeLimitMs, maxAttempts, threadsToUse)) {
                     mined = true; minedIndex = i; break;
                 }
@@ -827,7 +828,7 @@ int main(int argc, char** argv) {
 
             if (!mined) {
                 // jei niekas neiškasta, padidinti limitus ir kartoti
-                cout << "  Niekas neiškasta šiame raunde, didiname limitus ir kartojame\n";
+                cout << "  Niekas neiskasta siame raunde, didiname limitus ir kartojame\n";
                 // padidiname ribas
                 timeLimitMs = timeLimitMs * 2;
                 if (maxAttempts > 0) maxAttempts = maxAttempts * 2;
@@ -849,7 +850,7 @@ int main(int argc, char** argv) {
             cout << "------------------------------------------------------------\n";
         } else {
             // Jei nepavyko po maxRounds, grąžiname visų kandidatų tx į pool ir tęsiame (arba išeiname)
-            cout << "Nesėkmingi bandymai po " << maxRounds << " raundų. Grąžiname transakcijas į pool.\n";
+            cout << "Nesekmingi bandymai po " << maxRounds << " raundu. Graziname transakcijas i pool.\n";
             for (auto& c : candidates) for (auto& tx : c.transactions()) pool.push(std::move(tx));
             // Galim eiti toliau arba išeiti - čia išeiname (jei norite kitaip, galite pakeisti)
             break;
