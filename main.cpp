@@ -415,6 +415,52 @@ private:
     unsigned difficulty_{3};
 };
 
+// Merkle medžio šaknies skaičiavimas iš hash sąrašo (string'ų)
+static std::string create_merkle(std::vector<std::string> merkle) {
+    // Jeigu sąrašas tuščias – galim grąžinti hash("") (kad elgsena liktų panaši
+    // į buvusią computeTransactionsHash versiją)
+    if (merkle.empty())
+        return HashFunkcija("");
+
+    // Jeigu vienas elementas – jis ir yra root
+    if (merkle.size() == 1)
+        return merkle[0];
+
+    // Kol daugiau nei vienas hash'e – kartojam
+    while (merkle.size() > 1) {
+        // Jei nelyginis skaičius – dubliuojam paskutinį
+        if (merkle.size() % 2 != 0) {
+            merkle.push_back(merkle.back());
+        }
+
+        // Naujas lygis
+        std::vector<std::string> new_merkle;
+        new_merkle.reserve(merkle.size() / 2);
+
+        // Einam po du
+        for (auto it = merkle.begin(); it != merkle.end(); it += 2) {
+            // sujungiame du hashus ir maišome
+            std::string concat = *it + *(it + 1);
+            std::string new_root = HashFunkcija(concat);
+            new_merkle.push_back(std::move(new_root));
+        }
+
+        merkle = std::move(new_merkle);
+
+        // (Pasirinktinai) debug:
+        /*
+        std::cout << "Current merkle hash list:\n";
+        for (const auto& h : merkle)
+            std::cout << "  " << h << "\n";
+        std::cout << std::endl;
+        */
+    }
+
+    // Likęs vienas elementas – Merkle root
+    return merkle[0];
+}
+
+
 // BLOKO KLASĖ
 class Block {
 public:
@@ -429,36 +475,19 @@ public:
     const string& block_hash() const { return block_hash_; }
     void set_block_hash(string h) { block_hash_ = std::move(h); }
 
-    // computeTransactionsHash apskaičiuoja Merkle root iš transakcijų ID.
-    // Santrauka:
-    // 1) Kiekviena transakcija yra lapas (naudojame tx.getId())
-    // 2) Jei sluoksnyje yra nelyginis lapų skaičius, paskutinį dubliuojame
-    // 3) Kiekviena pora lapų sujungiama (concatenate) ir maišoma — taip sukuriamas tėvas
-    // 4) Kartojame procesą iki vieno root
-    static string computeTransactionsHash(const vector<Transaction>& txs) {
-        
-        if (txs.empty()) return HashFunkcija("");
-
-        
-        vector<string> layer; layer.reserve(txs.size());
-        for (const auto& t : txs) layer.push_back(t.getId());
-
-        
-        while (layer.size() > 1) {
-            if (layer.size() % 2 == 1) {
-                
-                layer.push_back(layer.back());
-            }
-            vector<string> next; next.reserve(layer.size() / 2);
-            for (size_t i = 0; i < layer.size(); i += 2) {
-                // parent hash = HashFunkcija(left + right)
-                next.push_back(HashFunkcija(layer[i] + layer[i+1]));
-            }
-            layer.swap(next);
-        }
-
-        return layer.front();
+    // computeTransactionsHash aadapta pagal merkle tree is papildomos
+    static std::string computeTransactionsHash(const std::vector<Transaction>& txs) {
+    // surenkame transakcijų ID į sąrašą merkle medžiui
+    std::vector<std::string> merkle;
+    merkle.reserve(txs.size());
+    for (const auto& t : txs) {
+        merkle.push_back(t.getId());
     }
+
+    // pasinaudojame integruota create_merkle() funkcija
+    return create_merkle(std::move(merkle));
+}
+
 
 
 private:
